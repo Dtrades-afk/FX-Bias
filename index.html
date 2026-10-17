@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FX Bias</title>
+<style>
+:root{--bg:#eef1f4;--card:#fff;--ink:#17212b;--mute:#5f6b78;--line:#d5dbe2;--vb:#0a5c50;--b:#0f7b6c;--n:#6b7682;--br:#c2412d;--vbr:#8a2418}
+@media (prefers-color-scheme:dark){:root{--bg:#141a21;--card:#1d252e;--ink:#e6ebf0;--mute:#9aa6b2;--line:#323d49;--vb:#2fa38f;--b:#3fc2ac;--n:#8c98a4;--br:#f0735d;--vbr:#ff8f7a}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+main{max-width:980px;margin:0 auto;padding:20px 16px 48px}
+h1{font:600 28px Georgia,serif;margin:0}h2{font:600 18px Georgia,serif;margin:0 0 10px}
+section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
+.meta{color:var(--mute);font-size:13px;margin:4px 0 16px}.warn{color:var(--br)}
+.scroll{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:460px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}th{font-size:13px;color:var(--mute)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.chip{border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:999px;padding:4px 12px;font:inherit;cursor:pointer}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--card)}
+.Very-bullish{color:var(--vb)}.Bullish{color:var(--b)}.Neutral{color:var(--n)}.Bearish{color:var(--br)}.Very-bearish{color:var(--vbr)}
+li{margin-bottom:6px}a{color:inherit}
+:focus-visible{outline:2px solid var(--b);outline-offset:2px}
+</style>
+</head>
+<body>
+<main>
+<h1>FX bias</h1>
+<p class="meta" id="meta">Loading the latest data…</p>
+<section><h2>Pairs</h2><div class="chips" id="filters"></div>
+<div class="scroll"><table><thead><tr><th>Pair</th><th>Bias</th><th>Gap</th></tr></thead><tbody id="pairs"></tbody></table></div></section>
+<section><h2>Currencies</h2>
+<div class="scroll"><table><thead><tr><th>Currency</th><th>Score</th><th>Rates</th><th>Inflation</th><th>COT</th><th>News</th></tr></thead><tbody id="cur"></tbody></table></div>
+<p class="meta">Inputs: +1 supportive, 0 flat, −1 negative, a dash means no data. News shows −1 to +1.</p></section>
+<section><h2>Headlines behind the news score</h2><ul id="news"></ul></section>
+</main>
+<script>
+let D=null,filt="All";
+const cls=l=>l.replace(" ","-");
+const f=v=>v===null||v===undefined?"–":(Math.round(v*100)/100);
+function esc(s){const d=document.createElement("div");d.textContent=s;return d.innerHTML}
+async function load(){
+  try{
+    const r=await fetch("/api/bias"+location.search);
+    if(!r.ok)throw new Error(r.status===401?"This site needs an access key. Add ?key=YOUR_KEY to the address.":"The server returned "+r.status);
+    D=await r.json();render();
+  }catch(e){document.getElementById("meta").innerHTML="<span class='warn'>Couldn’t load data: "+esc(e.message)+"</span>"}
+}
+function render(){
+  const bad=Object.entries(D.status).filter(([,v])=>v!=="ok");
+  document.getElementById("meta").innerHTML="Updated "+new Date(D.updated).toLocaleString()+(bad.length?"<br><span class='warn'>Missing inputs: "+bad.map(([k,v])=>esc(k+" ("+v+")")).join("; ")+". Scores use the inputs that did load.</span>":"");
+  const fl=document.getElementById("filters");fl.innerHTML="";
+  ["All","Very bullish","Bullish","Neutral","Bearish","Very bearish"].forEach(x=>{const b=document.createElement("button");b.className="chip";b.textContent=x;b.setAttribute("aria-pressed",x===filt);b.onclick=()=>{filt=x;render()};fl.appendChild(b)});
+  const rows=D.pairs.filter(p=>filt==="All"||p.level===filt).sort((a,b)=>Math.abs(b.gap)-Math.abs(a.gap));
+  document.getElementById("pairs").innerHTML=rows.length?rows.map(p=>"<tr><td>"+p.pair+"</td><td class='"+cls(p.level)+"'><b>"+p.level+"</b></td><td>"+(p.gap>0?"+":"")+p.gap+"</td></tr>").join(""):"<tr><td colspan='3'>No pairs at this level right now.</td></tr>";
+  document.getElementById("cur").innerHTML=Object.entries(D.currencies).sort((a,b)=>b[1].score-a[1].score).map(([c,v])=>"<tr><td>"+c+"</td><td><b>"+v.score+"</b></td><td>"+f(v.comps.rates)+"</td><td>"+f(v.comps.infl)+"</td><td>"+f(v.comps.cot)+"</td><td>"+f(v.comps.news)+"</td></tr>").join("");
+  document.getElementById("news").innerHTML=D.headlines.length?D.headlines.map(h=>"<li><b>"+h.c+" "+(h.s>0?"+":"")+h.s+"</b> "+(h.url?"<a href='"+encodeURI(h.url)+"' target='_blank' rel='noopener'>"+esc(h.headline)+"</a>":esc(h.headline))+" <span class='meta'>"+esc(h.source||"")+"</span></li>").join(""):"<li class='meta'>No scored headlines. Check the news keys in your settings.</li>";
+}
+load();
+</script>
+</body>
+</html>
