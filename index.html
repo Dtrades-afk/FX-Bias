@@ -54,6 +54,10 @@ li{margin-bottom:6px}a{color:var(--hd)}
 .kd div{display:grid;grid-template-columns:22px 82px 1fr;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13.5px}.kd div:last-child{border:0}.kd i{font-style:normal;color:var(--hd)}.kd em{font-style:normal;color:var(--mute)}
 .sf{margin-top:8px;font-size:12.5px;color:var(--mute)}.sf .conf{color:var(--amber);font-weight:600}
 .meth p,.meth li{color:var(--mute);max-width:75ch}
+.sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px}.plain{background:none;border:0;padding:0}
+.tr{display:flex;height:10px;border-radius:5px;overflow:hidden;min-width:150px;background:var(--line)}.tr b{display:block;height:100%}
+.tr+small,.pop+small{display:block;color:var(--mute);font-size:12px;margin-top:3px}.pop{height:10px;border-radius:5px;background:var(--line);min-width:110px;overflow:hidden}.pop b{display:block;height:100%;background:var(--hd)}
+.cb{display:grid;grid-template-columns:1fr 36px;gap:8px;align-items:center;min-width:150px}td.conf{color:var(--amber);font-weight:600}
 @media(max-width:420px){.mid2{grid-template-columns:90px 1fr}.sp{grid-column:1/-1}}
 .tabs{display:flex;gap:6px;overflow-x:auto;margin:0 0 16px;padding-bottom:4px}.tabs .chip{white-space:nowrap}
 .br{display:grid;grid-template-columns:44px 1fr 44px;gap:8px;align-items:center;margin-bottom:8px}
@@ -73,7 +77,8 @@ select{background:var(--card2);color:var(--ink);border:1px solid var(--line);bor
 </header>
 <div class="strip" id="strip" data-tab="overview"></div>
 <div class="cards" id="cards" data-tab="overview"></div>
-<section data-tab="charts"><h2>Market sentiment</h2><div id="sent"></div></section>
+<section data-tab="charts" class="plain"><h2>Market sentiment</h2><div class="sgrid" id="sent"></div></section>
+<section data-tab="charts"><h2>Fundamentals vs sentiment</h2><div class="scroll" id="sfboard"></div><p class="meta">Each bar is the gap between the two currencies on a −100 to +100 scale. Fundamentals combine rates, inflation and 2-year yields. Sentiment combines positioning, risk tone and news. Conflict means the two point in opposite directions.</p></section>
 <section data-tab="charts"><h2>Currency strength</h2><div id="strength"></div><p class="meta">Score from −100 (weak) to +100 (strong).</p></section>
 <section data-tab="charts"><h2>COT positioning (52-week percentile)</h2><div id="cotbars"></div><p class="meta">The marks at 10 and 90 show crowded zones. Amber bars are crowded.</p></section>
 <section data-tab="charts"><h2>Gap history <select id="hp" aria-label="Pair"></select></h2><div id="hist"></div><p class="meta">Built from the readings saved in this browser. Dashed lines are the ±25 and ±50 bias thresholds.</p></section>
@@ -83,6 +88,8 @@ select{background:var(--card2);color:var(--ink);border:1px solid var(--line);bor
 <div class="scroll"><table><thead><tr><th>Name</th><th>Score</th><th>Rates</th><th>Inflation</th><th>2y yield trend</th><th>COT</th><th>News</th><th>Risk tone</th></tr></thead><tbody id="cur"></tbody></table></div>
 <p class="meta">Inputs: +1 supportive, 0 flat, −1 negative, a dash means no data.</p></section>
 <section data-tab="news"><h2>Headlines</h2><ul id="news"></ul></section>
+<section data-tab="markets"><h2>Retail positioning</h2><div class="chips"><button class="chip" id="rtoggle"></button></div><div class="scroll" id="retail"></div>
+<p class="meta">Open positions from traders connected to Myfxbook only, so the sample is biased. Shown for context and not part of the bias score. Source: Myfxbook Community Outlook, refreshed about every 20 minutes.</p></section>
 <section data-tab="markets"><h2>Scorecard</h2>
 <p class="meta">How past readings compared with what price did over the next 5 trading days. Each day you open the site, its readings are saved in this browser.</p>
 <div id="score"><p class="meta">Checking saved readings…</p></div>
@@ -93,7 +100,7 @@ select{background:var(--card2);color:var(--ink);border:1px solid var(--line);bor
 <ul><li><b>Fundamentals:</b> policy-rate trend, inflation trend and 2-year government yield trend (yields currently cover USD, EUR and CAD only).</li>
 <li><b>Sentiment:</b> speculative positioning from the weekly CFTC COT report (halved when positioning is crowded), market risk tone from the VIX and S&amp;P 500, and AI-scored news headlines when the news keys are set.</li></ul>
 <p>A pair’s bias is the base score minus the quote score, halved. Gaps of +25 and +50 or more read Bullish and Very bullish, −25 and −50 or less read Bearish and Very bearish, and anything between is Neutral. Gold and silver use positioning only, damped, against the dollar’s score.</p>
-<p>Data comes from FRED, the CFTC, the ECB, the Bank of Canada and Finnhub, and refreshes when you open the site. Macro data lags by weeks and COT by days. The 7D trend lines and the scorecard come from readings saved in your browser. This is a decision aid and not financial advice.</p></section>
+<p>Data comes from FRED, the CFTC, the ECB, the Bank of Canada, Finnhub and Myfxbook (retail positioning, shown for context and not scored), and refreshes when you open the site. Macro data lags by weeks and COT by days. The 7D trend lines and the scorecard come from readings saved in your browser. This is a decision aid and not financial advice.</p></section>
 <section class="legend" id="legend"></section>
 <p class="meta" id="status"></p>
 </main>
@@ -149,7 +156,7 @@ function render(){
   document.getElementById("pairs").innerHTML=rows.length?rows.map(p=>"<tr><td>"+p.pair+"</td><td style='color:"+COL[p.level]+"'><b>"+p.level+"</b></td><td>"+sg(p.gap)+"</td></tr>").join(""):"<tr><td colspan='3'>No pairs at this level right now.</td></tr>";
   document.getElementById("cur").innerHTML=Object.entries(D.currencies).sort((a,b)=>b[1].score-a[1].score).map(([c,v])=>"<tr><td>"+c+"</td><td><b>"+v.score+"</b></td><td>"+f(v.comps.rates)+"</td><td>"+f(v.comps.infl)+"</td><td>"+f(v.comps.yld)+(v.yield2y!=null?" ("+v.yield2y.toFixed(2)+"%)":"")+"</td><td>"+f(v.comps.cot)+(v.cotPct!=null?" (pct "+v.cotPct+")":"")+"</td><td>"+f(v.comps.news)+"</td><td>"+f(v.comps.risk)+"</td></tr>").join("");
   document.getElementById("news").innerHTML=D.headlines.length?D.headlines.map(h=>"<li>"+(h.c?"<b>"+h.c+" "+sg(h.s)+"</b> ":"")+(h.url?"<a href='"+encodeURI(h.url)+"' target='_blank' rel='noopener'>"+esc(h.headline)+"</a>":esc(h.headline))+" <span class='meta'>"+esc(h.source||"")+"</span></li>").join(""):"<li class='meta'>No headlines loaded. Add the news keys to enable them.</li>";
-  document.getElementById("legend").innerHTML=Object.entries(COL).map(([k,v])=>"<span><i style='background:"+v+"'></i>"+k+"</span>").join("")+"<span>Bias is based on macro data, positioning and news inputs. For informational purposes only.</span>";drawStrip();drawCharts();
+  document.getElementById("legend").innerHTML=Object.entries(COL).map(([k,v])=>"<span><i style='background:"+v+"'></i>"+k+"</span>").join("")+"<span>Bias is based on macro data, positioning and news inputs. For informational purposes only.</span>";drawStrip();drawRetail();drawCharts();
 }
 const LOGKEY="fxbias-log-v1",H=5,APIS=["https://api.frankfurter.dev/v1","https://api.frankfurter.app"];
 function getLog(){try{return JSON.parse(localStorage.getItem(LOGKEY))||[]}catch(e){return[]}}
@@ -207,8 +214,7 @@ function showTab(t){
 }
 function drawCharts(){
   if(!D)return;
-  const rk=D.risk;
-  document.getElementById("sent").innerHTML=rk?"<p><b>"+(rk.tone>0?"Risk-on":rk.tone<0?"Risk-off":"Mixed")+"</b> (tone "+rk.tone+"). VIX "+rk.vix.toFixed(1)+", S&amp;P 500 "+sg(+((rk.spx/rk.ma-1)*100).toFixed(1))+"% vs its 50-day average.</p><p class='meta'>Risk-on tends to help AUD, NZD and CAD and hurt JPY and CHF. How strongly each currency reacts is my starting assumption.</p>":"<p class='meta'>Risk data not loaded. Check the status line at the bottom of the page.</p>";
+  drawSent();
   const cur=Object.entries(D.currencies).sort((a,b)=>b[1].score-a[1].score);
   document.getElementById("strength").innerHTML=cur.map(([c,v])=>{
     const s=v.score,col=s>0?COL.Bullish:s<0?COL.Bearish:COL.Neutral;
@@ -277,6 +283,45 @@ function drawCards(){
 function drawStrip(){
   const u=D.currencies.USD.score,us=u>=50?"Very strong":u>=25?"Strong":u<=-50?"Very weak":u<=-25?"Weak":"Neutral",rk=D.risk;
   document.getElementById("strip").innerHTML="<div><small>Markets tracked</small><b>"+WATCH.length+"</b><span>Forex · Metals</span></div><div><small>USD strength</small><b>"+us+"</b><span>Score "+sg(u)+"</span></div><div><small>Risk sentiment</small><b>"+(rk?(rk.tone>0?"Risk-on":rk.tone<0?"Risk-off":"Mixed"):"Not loaded")+"</b><span>"+(rk?"VIX "+rk.vix.toFixed(1):"See the status line below")+"</span></div>";
+}
+const riskLabel=t=>t>=1?["Strong risk-on","Very bullish"]:t>=0.5?["Risk-on","Bullish"]:t>-0.5?["Mixed","Neutral"]:t>-1?["Risk-off","Bearish"]:["Strong risk-off","Very bearish"];
+const isConf=s=>s.f!=null&&s.s!=null&&Math.abs(s.f)>=10&&Math.abs(s.s)>=10&&Math.sign(s.f)!==Math.sign(s.s);
+function cbar(v){
+  if(v==null)return "<span class='meta'>n/a</span>";
+  const col=v>0?COL.Bullish:v<0?COL.Bearish:COL.Neutral;
+  return "<div class='cb'><div class='bar'><i class='mid'></i><b style='left:"+(v<0?50+v/2:50)+"%;width:"+Math.abs(v)/2+"%;background:"+col+"'></b></div><span>"+sg(v)+"</span></div>";
+}
+function drawSent(){
+  const rk=D.risk;let h="";
+  if(rk){
+    const[lb,lv]=riskLabel(rk.tone),c=COL[lv],vl=rk.vix<16?"calm":rk.vix>24?"stressed":"normal",sp=(rk.spx/rk.ma-1)*100;
+    h+="<div class='card2'><div class='ch'><span class='ico'>VIX</span><div><b>Risk appetite</b><small>VIX and S&amp;P 500 trend</small></div><div class='sc'><small>Tone</small><b>"+sg(rk.tone)+"</b></div></div>"+
+    "<div class='mid2'>"+gauge({gap:rk.tone*100,level:lv},c)+"<div class='lv' style='color:"+c+"'><b>"+esc(lb)+"</b><small>Market risk tone</small></div><div class='sp'><small>Today</small><b>VIX "+rk.vix.toFixed(1)+"</b></div></div>"+
+    "<div class='kd'><h3>Key drivers</h3><div><i>◔</i><em>VIX</em><span>"+rk.vix.toFixed(1)+" ("+vl+"; below 16 is calm, above 24 stressed)</span></div><div><i>↗</i><em>S&amp;P 500</em><span>"+sg(+sp.toFixed(1))+"% vs its 50-day average</span></div><div><i>%</i><em>Effect</em><span>Risk-on helps AUD, NZD and CAD and hurts JPY and CHF (my assumption)</span></div></div></div>";
+  }else h+="<p class='meta'>Risk data not loaded. Check the status line at the bottom of the page.</p>";
+  const all=Object.entries(D.currencies),have=all.some(([,v])=>v.cotPct!=null),ex=all.filter(([,v])=>v.cotPct!=null&&(v.cotPct>=90||v.cotPct<=10));
+  h+="<div class='card2'><div class='ch'><span class='ico'>COT</span><div><b>Positioning extremes</b><small>Speculators, 52-week range</small></div></div><div class='kd'><h3>Crowded positions</h3>"+
+  (!have?"<div><i>—</i><em>No data</em><span>No COT history loaded</span></div>":ex.length?ex.map(([c,v])=>"<div><i>"+(v.cotPct>=90?"▲":"▼")+"</i><em>"+c+"</em><span>"+(v.cotPct>=90?"Crowded long":"Crowded short")+" (52w pct "+v.cotPct+")</span></div>").join(""):"<div><i>—</i><em>None</em><span>Nothing is in the top or bottom 10% of its year</span></div>")+"</div></div>";
+  document.getElementById("sent").innerHTML=h;
+  const rows=WATCH.map(w=>D.pairs.find(p=>p.pair===w)).filter(Boolean).map(p=>{
+    const s=split(p),rd=s.f==null||s.s==null?"Limited data":isConf(s)?"Conflict":Math.sign(s.f)===Math.sign(s.s)&&Math.abs(s.f)>=10&&Math.abs(s.s)>=10?"Aligned":"Mixed";
+    return "<tr><td><b>"+esc(NAMES[p.pair]||p.pair)+"</b></td><td>"+cbar(s.f)+"</td><td>"+cbar(s.s)+"</td><td class='"+(rd==="Conflict"?"conf":"")+"'>"+rd+"</td><td style='color:"+COL[p.level]+"'><b>"+esc(p.level)+"</b></td></tr>";
+  }).join("");
+  document.getElementById("sfboard").innerHTML="<table><thead><tr><th>Market</th><th>Fundamentals</th><th>Sentiment</th><th>Reading</th><th>Overall bias</th></tr></thead><tbody>"+rows+"</tbody></table>";
+}
+let RALL=false;
+function drawRetail(){
+  const el=document.getElementById("retail"),bt=document.getElementById("rtoggle"),R=D.retail&&D.retail.symbols;
+  if(!R||!R.length){bt.hidden=true;el.innerHTML="<p class='meta'>Retail positioning isn’t set up or didn’t load. Add MYFXBOOK_EMAIL and MYFXBOOK_PASSWORD in Vercel to turn it on.</p>";return}
+  bt.hidden=false;bt.textContent=RALL?"Show watchlist only":"Show all symbols";bt.onclick=()=>{RALL=!RALL;drawRetail()};
+  const tot=R.reduce((s,x)=>s+(x.total||0),0)||1,want=WATCH.map(w=>w.replace("/","")),n=v=>isFinite(v)?v:0;
+  const px=v=>!isFinite(v)||!v?"–":v>=100?v.toFixed(2):v.toFixed(4);
+  const rows=R.filter(x=>RALL||want.includes(x.name)).sort((a,b)=>n(b.total)-n(a.total)).map(x=>{
+    const sh=Math.max(0,Math.min(100,n(x.shortPct))),lg=Math.max(0,Math.min(100,n(x.longPct))),share=n(x.total)/tot*100;
+    return "<tr><td><b>"+esc(x.name)+"</b></td><td><div class='tr' role='img' aria-label='Short "+sh+"%, long "+lg+"%'><b style='width:"+sh+"%;background:var(--br)'></b><b style='width:"+lg+"%;background:var(--b)'></b></div><small>Short "+sh+"% · Long "+lg+"%</small></td>"+
+    "<td><div class='pop'><b style='width:"+Math.min(100,share*4)+"%'></b></div><small>"+share.toFixed(1)+"% of all positions</small></td><td>"+px(x.avgShort)+"</td><td>"+px(x.avgLong)+"</td><td>"+n(x.shortPos).toLocaleString()+" / "+n(x.longPos).toLocaleString()+"</td><td>"+n(x.shortLots).toFixed(0)+" / "+n(x.longLots).toFixed(0)+"</td></tr>";
+  }).join("");
+  el.innerHTML=rows?"<table><thead><tr><th>Symbol</th><th>Community trend (short vs long)</th><th>Popularity</th><th>Avg short price</th><th>Avg long price</th><th>Positions (S / L)</th><th>Lots (S / L)</th></tr></thead><tbody>"+rows+"</tbody></table>":"<p class='meta'>None of your watchlist symbols were returned. Try Show all symbols.</p>";
 }
 showTab(TAB);
 load();
