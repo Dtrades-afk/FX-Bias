@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>NorthStarFX</title>
+<title>Weekly Fundamental Bias</title>
 <style>
 :root{color-scheme:dark;--bg:#0a1220;--card:#0f1b2e;--card2:#0c1627;--line:#1f3150;--ink:#e6edf7;--mute:#8aa0bd;--hd:#6aa2ff;--vbr:#c0213f;--br:#f0445b;--n:#8a97a8;--b:#3b82f6;--vb:#22c3ee}
 *{box-sizing:border-box}
@@ -42,7 +42,7 @@ select{background:var(--card2);color:var(--ink);border:1px solid var(--line);bor
 </head>
 <body>
 <main>
-<h1>NorthStarFX</h1>
+<h1>Weekly fundamental bias</h1>
 <div class="sub">Key pairs &amp; commodities</div>
 <p class="meta" id="meta">Loading the latest data…</p>
 <nav class="tabs" id="tabs" aria-label="Sections"></nav>
@@ -62,6 +62,7 @@ select{background:var(--card2);color:var(--ink);border:1px solid var(--line);bor
 <button class="chip" onclick="exportLog()">Download log (CSV)</button>
 <p class="meta">Prices are ECB daily reference rates from Frankfurter, not your broker’s prices. Gold and silver are logged but not checked, because no price source is connected for them. The log lives only in this browser, so it grows only on days you open the site on this device. Small samples can mislead.</p></section>
 <section class="legend" id="legend"></section>
+<p class="meta" id="status"></p>
 </main>
 <script>
 // Edit this list to change which pairs appear as cards at the top.
@@ -106,7 +107,8 @@ function card(p){
 }
 function render(){
   const bad=Object.entries(D.status).filter(([,v])=>v!=="ok");
-  document.getElementById("meta").innerHTML="Updated "+new Date(D.updated).toLocaleString()+(bad.length?"<br><span class='warn'>Missing inputs: "+bad.map(([k,v])=>esc(k+" ("+v+")")).join("; ")+". Scores use the inputs that did load.</span>":"");
+  document.getElementById("meta").innerHTML="Updated "+new Date(D.updated).toLocaleString();
+  document.getElementById("status").innerHTML=bad.length?"<span class='warn'>Missing inputs: "+bad.map(([k,v])=>esc(k+" ("+v+")")).join("; ")+". Scores use the inputs that did load.</span>":"";
   document.getElementById("cards").innerHTML=WATCH.map(w=>D.pairs.find(p=>p.pair===w)).filter(Boolean).map(card).join("");
   const fl=document.getElementById("filters");fl.innerHTML="";
   ["All","Very bullish","Bullish","Neutral","Bearish","Very bearish"].forEach(x=>{const b=document.createElement("button");b.className="chip";b.textContent=x;b.setAttribute("aria-pressed",x===filt);b.onclick=()=>{filt=x;render()};fl.appendChild(b)});
