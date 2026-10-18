@@ -4,16 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>NorthStar FX</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 <style>
-:root{color-scheme:dark;--bg:#0a1220;--card:#0f1b2e;--card2:#0c1627;--line:#1f3150;--ink:#e6edf7;--mute:#8aa0bd;--hd:#6aa2ff;--vbr:#c0213f;--br:#f0445b;--n:#8a97a8;--b:#3b82f6;--vb:#22c3ee}
+:root{color-scheme:dark;--bg:#071426;--card:#101F34;--card2:#0B182B;--line:#1E3250;--ink:#F1F5F9;--mute:#94A3B8;--hd:#4194FF;--vbr:#C81E3A;--br:#F0445D;--n:#A0AEC0;--b:#4194FF;--vb:#7DB8FF}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
-main{max-width:1100px;margin:0 auto;padding:22px 16px 48px}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+main{max-width:1280px;margin:0 auto;padding:22px 16px 48px}
 h1{font:700 30px/1.1 system-ui,sans-serif;letter-spacing:.02em;text-transform:uppercase;margin:0}
 h2{font-size:18px;margin:0 0 10px}
 .sub{color:var(--hd);font-size:18px;margin:4px 0}
 .meta{color:var(--mute);font-size:13px;margin:0 0 18px}.warn{color:var(--br)}
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:14px;margin-bottom:22px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;margin-bottom:22px}
 .card,section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
 section{margin-bottom:16px}
 .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
@@ -32,6 +34,27 @@ th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}th{fon
 .legend i{display:inline-block;width:26px;height:14px;border-radius:4px;vertical-align:middle;margin-right:6px}
 li{margin-bottom:6px}a{color:var(--hd)}
 :root{--amber:#f5a524}[hidden]{display:none!important}
+.hd{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding-bottom:16px;border-bottom:1px solid var(--line);margin-bottom:18px}
+.brand{display:flex;align-items:center;gap:12px}.brand svg{width:40px;height:40px}
+.brand h1{font:700 22px/1.1 Inter,system-ui,sans-serif;letter-spacing:.18em;text-transform:uppercase;margin:0}
+.brand .sub{font-size:13px;color:var(--hd);margin:2px 0 0}
+.hd .tabs{margin:0 auto;gap:4px}.hd .tabs .chip{border:0;border-radius:0;padding:6px 12px;color:var(--mute)}
+.hd .tabs .chip[aria-pressed=true]{background:none;color:var(--hd);box-shadow:inset 0 -2px 0 var(--hd)}
+.hd .meta{margin:0}
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:16px}
+.strip>div{padding:12px 18px;border-right:1px solid var(--line)}.strip>div:last-child{border:0}
+.strip small{display:block;color:var(--mute);font-size:12px;text-transform:uppercase;letter-spacing:.06em}.strip b{display:block;font-size:20px}.strip span{color:var(--mute);font-size:13px}
+.card2{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+.ch{display:flex;align-items:center;gap:10px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.ico{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--card2);border:1px solid var(--line);font-size:11px;font-weight:700;color:var(--hd)}
+.ch b{font-size:17px}.ch small{display:block;color:var(--mute);font-size:12px}.sc{margin-left:auto;text-align:right}
+.mid2{display:grid;grid-template-columns:96px 1fr 110px;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.gauge,.spark{width:100%;display:block}.lv b{display:block;font-size:17px;letter-spacing:.03em;text-transform:uppercase}.lv small,.sp small{color:var(--mute);font-size:12px}.nospark{font-size:11px;color:var(--mute)}
+.kd h3{margin:10px 0 4px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--hd)}
+.kd div{display:grid;grid-template-columns:22px 82px 1fr;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13.5px}.kd div:last-child{border:0}.kd i{font-style:normal;color:var(--hd)}.kd em{font-style:normal;color:var(--mute)}
+.sf{margin-top:8px;font-size:12.5px;color:var(--mute)}.sf .conf{color:var(--amber);font-weight:600}
+.meth p,.meth li{color:var(--mute);max-width:75ch}
+@media(max-width:420px){.mid2{grid-template-columns:90px 1fr}.sp{grid-column:1/-1}}
 .tabs{display:flex;gap:6px;overflow-x:auto;margin:0 0 16px;padding-bottom:4px}.tabs .chip{white-space:nowrap}
 .br{display:grid;grid-template-columns:44px 1fr 44px;gap:8px;align-items:center;margin-bottom:8px}
 .bar{position:relative;height:10px;border-radius:5px;background:var(--line)}.bar b{position:absolute;top:0;bottom:0;border-radius:5px}
@@ -42,25 +65,35 @@ select{background:var(--card2);color:var(--ink);border:1px solid var(--line);bor
 </head>
 <body>
 <main>
-<h1>NorthStar FX</h1>
-<div class="sub">Key pairs &amp; commodities</div>
-<p class="meta" id="meta">Loading the latest data…</p>
+<header class="hd">
+<div class="brand"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 2l4 14 14 4-14 4-4 14-4-14L2 20l14-4z" fill="#4194FF"/><path d="M20 8l2 10 10 2-10 2-2 10-2-10-10-2 10-2z" fill="#7DB8FF"/></svg>
+<div><h1>NorthStar FX</h1><div class="sub">Fundamental &amp; Sentiment Intelligence</div></div></div>
 <nav class="tabs" id="tabs" aria-label="Sections"></nav>
-<div class="cards" id="cards" data-tab="home"></div>
+<p class="meta" id="meta">Loading the latest data…</p>
+</header>
+<div class="strip" id="strip" data-tab="overview"></div>
+<div class="cards" id="cards" data-tab="overview"></div>
+<section data-tab="charts"><h2>Market sentiment</h2><div id="sent"></div></section>
 <section data-tab="charts"><h2>Currency strength</h2><div id="strength"></div><p class="meta">Score from −100 (weak) to +100 (strong).</p></section>
 <section data-tab="charts"><h2>COT positioning (52-week percentile)</h2><div id="cotbars"></div><p class="meta">The marks at 10 and 90 show crowded zones. Amber bars are crowded.</p></section>
 <section data-tab="charts"><h2>Gap history <select id="hp" aria-label="Pair"></select></h2><div id="hist"></div><p class="meta">Built from the readings saved in this browser. Dashed lines are the ±25 and ±50 bias thresholds.</p></section>
-<section data-tab="pairs"><h2>All pairs</h2><div class="chips" id="filters"></div>
+<section data-tab="markets"><h2>All markets</h2><div class="chips" id="filters"></div>
 <div class="scroll"><table><thead><tr><th>Pair</th><th>Bias</th><th>Gap</th></tr></thead><tbody id="pairs"></tbody></table></div></section>
-<section data-tab="data"><h2>Currencies and metals</h2>
-<div class="scroll"><table><thead><tr><th>Name</th><th>Score</th><th>Rates</th><th>Inflation</th><th>2y yield trend</th><th>COT</th><th>News</th></tr></thead><tbody id="cur"></tbody></table></div>
+<section data-tab="markets"><h2>Currencies and metals</h2>
+<div class="scroll"><table><thead><tr><th>Name</th><th>Score</th><th>Rates</th><th>Inflation</th><th>2y yield trend</th><th>COT</th><th>News</th><th>Risk tone</th></tr></thead><tbody id="cur"></tbody></table></div>
 <p class="meta">Inputs: +1 supportive, 0 flat, −1 negative, a dash means no data.</p></section>
 <section data-tab="news"><h2>Headlines</h2><ul id="news"></ul></section>
-<section data-tab="score"><h2>Scorecard</h2>
+<section data-tab="markets"><h2>Scorecard</h2>
 <p class="meta">How past readings compared with what price did over the next 5 trading days. Each day you open the site, its readings are saved in this browser.</p>
 <div id="score"><p class="meta">Checking saved readings…</p></div>
 <button class="chip" onclick="exportLog()">Download log (CSV)</button>
 <p class="meta">Prices are ECB daily reference rates from Frankfurter, not your broker’s prices. Gold and silver are logged but not checked, because no price source is connected for them. The log lives only in this browser, so it grows only on days you open the site on this device. Small samples can mislead.</p></section>
+<section data-tab="methodology" class="meth"><h2>Methodology</h2>
+<p>Each currency gets a score from −100 to +100, the average of the inputs that loaded. Every input counts as +1, 0 or −1 (equal weights, untested):</p>
+<ul><li><b>Fundamentals:</b> policy-rate trend, inflation trend and 2-year government yield trend (yields currently cover USD, EUR and CAD only).</li>
+<li><b>Sentiment:</b> speculative positioning from the weekly CFTC COT report (halved when positioning is crowded), market risk tone from the VIX and S&amp;P 500, and AI-scored news headlines when the news keys are set.</li></ul>
+<p>A pair’s bias is the base score minus the quote score, halved. Gaps of +25 and +50 or more read Bullish and Very bullish, −25 and −50 or less read Bearish and Very bearish, and anything between is Neutral. Gold and silver use positioning only, damped, against the dollar’s score.</p>
+<p>Data comes from FRED, the CFTC, the ECB, the Bank of Canada and Finnhub, and refreshes when you open the site. Macro data lags by weeks and COT by days. The 7D trend lines and the scorecard come from readings saved in your browser. This is a decision aid and not financial advice.</p></section>
 <section class="legend" id="legend"></section>
 <p class="meta" id="status"></p>
 </main>
@@ -77,14 +110,14 @@ async function load(){
   try{
     const r=await fetch("/api/bias"+location.search);
     if(!r.ok)throw new Error(r.status===401?"This site needs an access key. Add ?key=YOUR_KEY to the address.":"The server returned "+r.status);
-    D=await r.json();render();logReadings();drawCharts();scorecard();
+    D=await r.json();render();logReadings();drawCards();drawCharts();scorecard();
   }catch(e){document.getElementById("meta").innerHTML="<span class='warn'>Couldn’t load data: "+esc(e.message)+"</span>"}
 }
 function why(p){
   const[b,q]=p.pair.split("/"),cb=D.currencies[b].comps,cq=D.currencies[q].comps;
-  const W={yld:["falling","flat","rising"],rates:["falling","flat","rising"],infl:["cooling","flat","heating up"],cot:["cutting longs","flat","adding longs"]};
-  const L={rates:"Rates",infl:"Inflation",yld:"2y yield trend",cot:"Positioning"},out=[];
-  for(const k of["rates","infl","yld","cot"]){
+  const W={risk:["headwind","neutral","tailwind"],yld:["falling","flat","rising"],rates:["falling","flat","rising"],infl:["cooling","flat","heating up"],cot:["cutting longs","flat","adding longs"]};
+  const L={rates:"Rates",infl:"Inflation",yld:"2y yield trend",risk:"Risk tone",cot:"Positioning"},out=[];
+  for(const k of["rates","infl","yld","risk","cot"]){
     const parts=[];
     [[b,cb],[q,cq]].forEach(([c,m])=>{if(m[k]!==null&&m[k]!==undefined)parts.push(c+" "+W[k][Math.sign(m[k])+1]+(k==="cot"&&Math.abs(m[k])===0.5?" (crowded)":"")+(k==="cot"&&D.currencies[c].cotPct!=null?" (52w pct "+D.currencies[c].cotPct+")":""))});
     if(parts.length)out.push(L[k]+": "+parts.join(", "));
@@ -109,14 +142,14 @@ function render(){
   const bad=Object.entries(D.status).filter(([,v])=>v!=="ok");
   document.getElementById("meta").innerHTML="Updated "+new Date(D.updated).toLocaleString();
   document.getElementById("status").innerHTML=bad.length?"<span class='warn'>Missing inputs: "+bad.map(([k,v])=>esc(k+" ("+v+")")).join("; ")+". Scores use the inputs that did load.</span>":"";
-  document.getElementById("cards").innerHTML=WATCH.map(w=>D.pairs.find(p=>p.pair===w)).filter(Boolean).map(card).join("");
+  drawCards();
   const fl=document.getElementById("filters");fl.innerHTML="";
   ["All","Very bullish","Bullish","Neutral","Bearish","Very bearish"].forEach(x=>{const b=document.createElement("button");b.className="chip";b.textContent=x;b.setAttribute("aria-pressed",x===filt);b.onclick=()=>{filt=x;render()};fl.appendChild(b)});
   const rows=D.pairs.filter(p=>filt==="All"||p.level===filt).sort((a,b)=>Math.abs(b.gap)-Math.abs(a.gap));
   document.getElementById("pairs").innerHTML=rows.length?rows.map(p=>"<tr><td>"+p.pair+"</td><td style='color:"+COL[p.level]+"'><b>"+p.level+"</b></td><td>"+sg(p.gap)+"</td></tr>").join(""):"<tr><td colspan='3'>No pairs at this level right now.</td></tr>";
-  document.getElementById("cur").innerHTML=Object.entries(D.currencies).sort((a,b)=>b[1].score-a[1].score).map(([c,v])=>"<tr><td>"+c+"</td><td><b>"+v.score+"</b></td><td>"+f(v.comps.rates)+"</td><td>"+f(v.comps.infl)+"</td><td>"+f(v.comps.yld)+(v.yield2y!=null?" ("+v.yield2y.toFixed(2)+"%)":"")+"</td><td>"+f(v.comps.cot)+(v.cotPct!=null?" (pct "+v.cotPct+")":"")+"</td><td>"+f(v.comps.news)+"</td></tr>").join("");
+  document.getElementById("cur").innerHTML=Object.entries(D.currencies).sort((a,b)=>b[1].score-a[1].score).map(([c,v])=>"<tr><td>"+c+"</td><td><b>"+v.score+"</b></td><td>"+f(v.comps.rates)+"</td><td>"+f(v.comps.infl)+"</td><td>"+f(v.comps.yld)+(v.yield2y!=null?" ("+v.yield2y.toFixed(2)+"%)":"")+"</td><td>"+f(v.comps.cot)+(v.cotPct!=null?" (pct "+v.cotPct+")":"")+"</td><td>"+f(v.comps.news)+"</td><td>"+f(v.comps.risk)+"</td></tr>").join("");
   document.getElementById("news").innerHTML=D.headlines.length?D.headlines.map(h=>"<li>"+(h.c?"<b>"+h.c+" "+sg(h.s)+"</b> ":"")+(h.url?"<a href='"+encodeURI(h.url)+"' target='_blank' rel='noopener'>"+esc(h.headline)+"</a>":esc(h.headline))+" <span class='meta'>"+esc(h.source||"")+"</span></li>").join(""):"<li class='meta'>No headlines loaded. Add the news keys to enable them.</li>";
-  document.getElementById("legend").innerHTML=Object.entries(COL).map(([k,v])=>"<span><i style='background:"+v+"'></i>"+k+"</span>").join("")+"<span>Bias is based on macro data, positioning and news inputs. For informational purposes only.</span>";drawCharts();
+  document.getElementById("legend").innerHTML=Object.entries(COL).map(([k,v])=>"<span><i style='background:"+v+"'></i>"+k+"</span>").join("")+"<span>Bias is based on macro data, positioning and news inputs. For informational purposes only.</span>";drawStrip();drawCharts();
 }
 const LOGKEY="fxbias-log-v1",H=5,APIS=["https://api.frankfurter.dev/v1","https://api.frankfurter.app"];
 function getLog(){try{return JSON.parse(localStorage.getItem(LOGKEY))||[]}catch(e){return[]}}
@@ -162,8 +195,8 @@ function exportLog(){
   const csv="date,pair,level,gap\n"+getLog().map(x=>[x.d,x.p,x.l,x.g].join(",")).join("\n");
   const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="fx-bias-log.csv";a.click();
 }
-const TABS=[["home","Home"],["pairs","Pairs"],["charts","Charts"],["news","News"],["score","Scorecard"],["data","Data"]];
-let TAB=(location.hash||"#home").slice(1),HP="EUR/USD";
+const TABS=[["overview","Overview"],["markets","Markets"],["charts","Charts"],["news","News"],["methodology","Methodology"]];
+let TAB=(location.hash||"#overview").slice(1),HP="EUR/USD";
 function showTab(t){
   if(!TABS.some(x=>x[0]===t))t="home";
   TAB=t;
@@ -174,6 +207,8 @@ function showTab(t){
 }
 function drawCharts(){
   if(!D)return;
+  const rk=D.risk;
+  document.getElementById("sent").innerHTML=rk?"<p><b>"+(rk.tone>0?"Risk-on":rk.tone<0?"Risk-off":"Mixed")+"</b> (tone "+rk.tone+"). VIX "+rk.vix.toFixed(1)+", S&amp;P 500 "+sg(+((rk.spx/rk.ma-1)*100).toFixed(1))+"% vs its 50-day average.</p><p class='meta'>Risk-on tends to help AUD, NZD and CAD and hurt JPY and CHF. How strongly each currency reacts is my starting assumption.</p>":"<p class='meta'>Risk data not loaded. Check the status line at the bottom of the page.</p>";
   const cur=Object.entries(D.currencies).sort((a,b)=>b[1].score-a[1].score);
   document.getElementById("strength").innerHTML=cur.map(([c,v])=>{
     const s=v.score,col=s>0?COL.Bullish:s<0?COL.Bearish:COL.Neutral;
@@ -195,6 +230,53 @@ function drawCharts(){
     "<polyline fill='none' stroke='var(--hd)' stroke-width='2' points='"+pts.map((x,i)=>X(i)+","+Y(x.g)).join(" ")+"'/>"+
     pts.map((x,i)=>"<circle cx='"+X(i)+"' cy='"+Y(x.g)+"' r='4' fill='"+(COL[x.l]||"var(--n)")+"'><title>"+esc(x.d+": "+x.l+" ("+sg(x.g)+")")+"</title></circle>").join("")+
     "<text x='40' y='226' font-size='11' fill='var(--mute)'>"+esc(pts[0].d)+"</text><text x='580' y='226' text-anchor='end' font-size='11' fill='var(--mute)'>"+esc(pts[pts.length-1].d)+"</text></svg>";
+}
+const UP=["Very bullish","Bullish"],MARK={"Very bullish":"▲▲","Bullish":"▲","Neutral":"◆","Bearish":"▼","Very bearish":"▼▼"};
+const SIDE=(c,k,w)=>{const v=D.currencies[c].comps[k];return v==null?null:c+" "+w[Math.sign(v)+1]};
+const LINE=(p,k,w)=>p.pair.split("/").map(c=>SIDE(c,k,w)).filter(Boolean).join(" · ");
+function fsAvg(c){
+  const m=D.currencies[c].comps,av=a=>{const x=a.map(k=>m[k]).filter(v=>v!=null);return x.length?x.reduce((s,v)=>s+v,0)/x.length*100:null};
+  return{f:av(["rates","infl","yld"]),s:av(["cot","risk","news"])};
+}
+function split(p){
+  const[b,q]=p.pair.split("/"),B=fsAvg(b),Q=fsAvg(q),d=(x,y)=>x==null&&y==null?null:Math.round(((x||0)-(y||0))/2);
+  return{f:d(B.f,Q.f),s:d(B.s,Q.s)};
+}
+function gauge(p,c){
+  const pct=Math.max(4,Math.min(100,(p.gap+100)/2)),a=Math.PI*(1-pct/100),nx=60+34*Math.cos(a),ny=62-34*Math.sin(a),arc="M10 62 A50 50 0 0 1 110 62";
+  return "<svg viewBox='0 0 120 70' class='gauge' role='img' aria-label='"+esc(p.level)+"'><path d='"+arc+"' pathLength='100' fill='none' stroke='var(--line)' stroke-width='10'/><path d='"+arc+"' pathLength='100' fill='none' stroke='"+c+"' stroke-width='10' stroke-dasharray='"+pct+" 100'/><line x1='60' y1='62' x2='"+nx.toFixed(1)+"' y2='"+ny.toFixed(1)+"' stroke='var(--ink)' stroke-width='2.5' stroke-linecap='round'/><circle cx='60' cy='62' r='3.5' fill='var(--ink)'/></svg>";
+}
+function spark(pair,c){
+  const pts=getLog().filter(x=>x.p===pair).sort((a,b)=>a.d<b.d?-1:1).slice(-7);
+  if(pts.length<2)return "<div class='nospark'>Trend builds as daily readings are saved ("+pts.length+" so far)</div>";
+  const g=pts.map(x=>x.g),lo=Math.min(...g,-10),hi=Math.max(...g,10),X=i=>4+i*112/(pts.length-1),Y=v=>40-(v-lo)/(hi-lo)*34;
+  const line=pts.map((x,i)=>X(i).toFixed(1)+","+Y(x.g).toFixed(1)).join(" ");
+  return "<svg viewBox='0 0 120 46' class='spark' role='img' aria-label='Last "+pts.length+" daily readings'><polyline points='"+X(0)+",44 "+line+" "+X(pts.length-1)+",44' fill='"+c+"' fill-opacity='.12' stroke='none'/><polyline points='"+line+"' fill='none' stroke='"+c+"' stroke-width='1.6'/></svg>";
+}
+function drivers(p){
+  const[b,q]=p.pair.split("/"),cm=D.currencies,yb=cm[b].yield2y,yq=cm[q].yield2y;
+  const cotTxt=[b,q].map(c=>{
+    const v=cm[c].comps.cot;if(v==null)return null;
+    return c+" "+["cutting longs","flat","adding longs"][Math.sign(v)+1]+(Math.abs(v)===0.5?" (crowded)":"")+(cm[c].cotPct!=null?" (52w pct "+cm[c].cotPct+")":"");
+  }).filter(Boolean).join(" · ");
+  const yl=yb!=null&&yq!=null?"2y yields "+b+" "+yb.toFixed(2)+"% vs "+q+" "+yq.toFixed(2)+"%":LINE(p,"yld",["falling","flat","rising"]);
+  return [["%","Rates",LINE(p,"rates",["falling","flat","rising"])||"No data"],["↗","Yields",yl||"No yield data for this pair"],["◔","Positioning",cotTxt||"No data"]];
+}
+function card2(p){
+  const c=COL[p.level],sp=split(p),metal=p.pair.startsWith("XA");
+  const name=p.pair.startsWith("XAU")?"Gold":p.pair.startsWith("XAG")?"Silver":p.pair,conf=sp.f!=null&&sp.s!=null&&Math.abs(sp.f)>=10&&Math.abs(sp.s)>=10&&Math.sign(sp.f)!==Math.sign(sp.s);
+  const sf=sp.f==null&&sp.s==null?"Not enough data to split fundamentals and sentiment.":"Fundamentals "+(sp.f==null?"n/a":sg(sp.f))+" · Sentiment "+(sp.s==null?"n/a":sg(sp.s))+(conf?" <span class='conf'>Conflict: fundamentals and sentiment disagree</span>":"");
+  return "<article class='card2'><div class='ch'><span class='ico'>"+(metal?p.pair.slice(0,3):p.pair.slice(0,3))+"</span><div><b>"+esc(name)+"</b><small>"+(metal?esc(p.pair)+" · Metals":"Forex")+"</small></div><div class='sc'><small>Bias score</small><b>"+sg(p.gap)+"</b></div></div>"+
+  "<div class='mid2'>"+gauge(p,c)+"<div class='lv' style='color:"+c+"'><b>"+MARK[p.level]+" "+esc(p.level)+"</b><small>Current bias</small></div><div class='sp'><small>7D</small>"+spark(p.pair,c)+"</div></div>"+
+  "<div class='kd'><h3>Key drivers</h3>"+drivers(p).map(r=>"<div><i>"+r[0]+"</i><em>"+r[1]+"</em><span>"+esc(r[2])+"</span></div>").join("")+"</div><div class='sf'>"+sf+"</div></article>";
+}
+function drawCards(){
+  if(!D)return;
+  document.getElementById("cards").innerHTML=WATCH.map(w=>D.pairs.find(p=>p.pair===w)).filter(Boolean).map(card2).join("")||"<p class='meta'>No markets loaded.</p>";
+}
+function drawStrip(){
+  const u=D.currencies.USD.score,us=u>=50?"Very strong":u>=25?"Strong":u<=-50?"Very weak":u<=-25?"Weak":"Neutral",rk=D.risk;
+  document.getElementById("strip").innerHTML="<div><small>Markets tracked</small><b>"+WATCH.length+"</b><span>Forex · Metals</span></div><div><small>USD strength</small><b>"+us+"</b><span>Score "+sg(u)+"</span></div><div><small>Risk sentiment</small><b>"+(rk?(rk.tone>0?"Risk-on":rk.tone<0?"Risk-off":"Mixed"):"Not loaded")+"</b><span>"+(rk?"VIX "+rk.vix.toFixed(1):"See the status line below")+"</span></div>";
 }
 showTab(TAB);
 load();
