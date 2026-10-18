@@ -8,7 +8,7 @@ const COT = { EUR: "099741", GBP: "096742", JPY: "097741", AUD: "232741", NZD: "
 // [FRED series id, lookback in observations]
 const RATE = { USD: ["IRSTCI01USM156N", 3], EUR: ["IRSTCI01EZM156N", 3], GBP: ["IRSTCI01GBM156N", 3], JPY: ["IRSTCI01JPM156N", 3], AUD: ["IRSTCI01AUM156N", 3], NZD: ["IRSTCI01NZM156N", 3], CAD: ["IRSTCI01CAM156N", 3], CHF: ["IRSTCI01CHM156N", 3] };
 const CPI = { USD: ["CPALTT01USM659N", 3], EUR: ["CPALTT01EZM659N", 3], GBP: ["CPALTT01GBM659N", 3], JPY: ["CPALTT01JPM659N", 3], AUD: ["CPALTT01AUQ659N", 1], NZD: ["CPALTT01NZQ659N", 1], CAD: ["CPALTT01CAM659N", 3], CHF: ["CPALTT01CHM659N", 3] };
-const W = { rates: 1, infl: 1, cot: 1, news: 1 }; // news = 25% when all inputs exist
+const W = { rates: 1, infl: 1, yld: 1, cot: 1, news: 1 }; // equal weights; news = 20% when all inputs exist
 const TTL = { cot: 6 * 36e5, macro: 6 * 36e5, news: 30 * 6e4 };
 
 const mem = {};
@@ -97,6 +97,38 @@ const news = () => cached("news", TTL.news, async () => {
   return { scores, items };
 });
 
+// 2-year government bond yields. Free daily sources are wired for USD, EUR and CAD only.
+// GBP, JPY, AUD, NZD and CHF have no source yet, so their yield input stays empty.
+// Verify these IDs on each provider's site before relying on them.
+const YLD = { USD: ["fred", "DGS2"], EUR: ["ecb", "B.U2.EUR.4F.G_N_A.SV_C_YM.SR_2Y"], CAD: ["boc", "BD.CDN.2YR.DQ.YLD"] };
+async function yieldSeries(src, id) { // returns values oldest to newest
+  if (src === "fred") {
+    const key = process.env.FRED_API_KEY;
+    if (!key) throw new Error("FRED_API_KEY missing");
+    const j = await getJson(`https://api.stlouisfed.org/fred/series/observations?series_id=${id}&api_key=${key}&file_type=json&sort_order=desc&limit=40`);
+    return j.observations.filter(x => x.value !== ".").map(x => +x.value).reverse();
+  }
+  if (src === "ecb") {
+    const j = await getJson(`https://data-api.ecb.europa.eu/service/data/YC/${id}?lastNObservations=30&format=jsondata`);
+    const o = Object.values(j.dataSets[0].series)[0].observations;
+    return Object.keys(o).sort((a, b) => a - b).map(k => o[k][0]);
+  }
+  const j = await getJson(`https://www.bankofcanada.ca/valet/observations/${id}/json?recent=30`);
+  return j.observations.map(x => +x[id].v).filter(v => !isNaN(v));
+}
+const yields = () => cached("yld", TTL.macro, async () => {
+  const out = {};
+  for (const c of CUR) {
+    out[c] = null;
+    if (!YLD[c]) continue;
+    try {
+      const v = await yieldSeries(...YLD[c]);
+      if (v.length > 20) out[c] = { last: v[v.length - 1], chg: v[v.length - 1] - v[v.length - 21] }; // change over about 4 weeks
+    } catch (e) { /* leave empty */ }
+  }
+  return out;
+});
+
 const level = g => (g >= 50 ? "Very bullish" : g >= 25 ? "Bullish" : g <= -50 ? "Very bearish" : g <= -25 ? "Bearish" : "Neutral");
 
 module.exports = async (req, res) => {
@@ -104,19 +136,21 @@ module.exports = async (req, res) => {
     res.status(401).json({ error: "Access key required" });
     return;
   }
-  const [m, c, n] = await Promise.all([macro(), cot(), news()]);
-  const status = { macro: m.error ? m.error : "ok", cot: c.error ? c.error : "ok", news: n.error ? n.error : n.unscored ? "headlines only, scoring needs ANTHROPIC_API_KEY" : "ok" };
+  const [m, c, n, y] = await Promise.all([macro(), cot(), news(), yields()]);
+  const miss = CUR.filter(x => y.error || !y[x]);
+  const status = { yields: miss.length ? "no data for " + miss.join(", ") : "ok", macro: m.error ? m.error : "ok", cot: c.error ? c.error : "ok", news: n.error ? n.error : n.unscored ? "headlines only, scoring needs ANTHROPIC_API_KEY" : "ok" };
   const currencies = {};
   for (const cu of CUR) {
     const comps = {
       rates: m.error ? null : m[cu].rates,
       infl: m.error ? null : m[cu].infl,
+      yld: y.error || !y[cu] ? null : sign(y[cu].chg, 0.1), // +/-1 if the 2y yield moved more than 10bp in about 4 weeks
       cot: c.error ? null : c.vals[cu],
       news: n.error ? null : n.scores[cu]
     };
     let t = 0, w = 0;
     for (const k in comps) if (comps[k] !== null) { t += W[k] * comps[k]; w += W[k]; }
-    currencies[cu] = { score: w ? Math.round((t / w) * 100) : 0, comps, cotPct: c.error ? null : c.pct[cu] };
+    currencies[cu] = { score: w ? Math.round((t / w) * 100) : 0, comps, cotPct: c.error ? null : c.pct[cu], yield2y: y.error || !y[cu] ? null : y[cu].last };
   }
   // Metals: own COT positioning only. A neutral prior of weight 1 damps the score (max +/-50),
   // because the dollar side of XAU/USD and XAG/USD already carries rates and inflation.
