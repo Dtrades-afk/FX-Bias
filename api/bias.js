@@ -46,16 +46,22 @@ const macro = () => cached("macro", TTL.macro, async () => {
 
 const cot = () => cached("cot", TTL.cot, async () => {
   const codes = Object.values(COT).map(c => `'${c}'`).join(",");
-  const p = new URLSearchParams({ "$where": `cftc_contract_market_code in(${codes})`, "$order": "report_date_as_yyyy_mm_dd DESC", "$limit": "40" });
+  const p = new URLSearchParams({ "$where": `cftc_contract_market_code in(${codes})`, "$order": "report_date_as_yyyy_mm_dd DESC", "$limit": "700" });
   const rows = await getJson("https://publicreporting.cftc.gov/resource/6dca-aqww.json?" + p);
   const out = {};
+  const pct = {};
   for (const c of Object.keys(COT)) {
-    const r = rows.filter(x => x.cftc_contract_market_code === COT[c]).slice(0, 2);
-    if (r.length < 2) { out[c] = null; continue; }
+    const r = rows.filter(x => x.cftc_contract_market_code === COT[c]).slice(0, 52);
+    if (r.length < 2) { out[c] = null; pct[c] = null; continue; }
     const net = x => +x.noncomm_positions_long_all - +x.noncomm_positions_short_all;
-    out[c] = sign(net(r[0]) - net(r[1]), 500);
+    const chg = sign(net(r[0]) - net(r[1]), 500);
+    const pc = Math.round((100 * r.filter(x => net(x) <= net(r[0])).length) / r.length);
+    pct[c] = r.length >= 26 ? pc : null; // needs at least 26 weeks of history
+    // Crowded positioning (top or bottom 10% of the past year) halves a signal that adds to the crowd.
+    const crowded = pct[c] !== null && ((chg > 0 && pc >= 90) || (chg < 0 && pc <= 10));
+    out[c] = crowded ? chg * 0.5 : chg;
   }
-  return out;
+  return { vals: out, pct };
 });
 
 const news = () => cached("news", TTL.news, async () => {
@@ -105,18 +111,18 @@ module.exports = async (req, res) => {
     const comps = {
       rates: m.error ? null : m[cu].rates,
       infl: m.error ? null : m[cu].infl,
-      cot: c.error ? null : c[cu],
+      cot: c.error ? null : c.vals[cu],
       news: n.error ? null : n.scores[cu]
     };
     let t = 0, w = 0;
     for (const k in comps) if (comps[k] !== null) { t += W[k] * comps[k]; w += W[k]; }
-    currencies[cu] = { score: w ? Math.round((t / w) * 100) : 0, comps };
+    currencies[cu] = { score: w ? Math.round((t / w) * 100) : 0, comps, cotPct: c.error ? null : c.pct[cu] };
   }
   // Metals: own COT positioning only. A neutral prior of weight 1 damps the score (max +/-50),
   // because the dollar side of XAU/USD and XAG/USD already carries rates and inflation.
   for (const a of METALS) {
-    const ct = c.error ? null : c[a];
-    currencies[a] = { score: ct === null ? 0 : Math.round((ct / 2) * 100), comps: { rates: null, infl: null, cot: ct, news: null } };
+    const ct = c.error ? null : c.vals[a];
+    currencies[a] = { score: ct === null ? 0 : Math.round((ct / 2) * 100), comps: { rates: null, infl: null, cot: ct, news: null }, cotPct: c.error ? null : c.pct[a] };
   }
   const pairs = PAIRS.map(p => {
     const [b, q] = p.split("/");
