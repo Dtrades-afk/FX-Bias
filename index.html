@@ -43,7 +43,7 @@ li{margin-bottom:6px}a{color:var(--hd)}
 <section><h2>All pairs</h2><div class="chips" id="filters"></div>
 <div class="scroll"><table><thead><tr><th>Pair</th><th>Bias</th><th>Gap</th></tr></thead><tbody id="pairs"></tbody></table></div></section>
 <section><h2>Currencies and metals</h2>
-<div class="scroll"><table><thead><tr><th>Name</th><th>Score</th><th>Rates</th><th>Inflation</th><th>COT</th><th>News</th></tr></thead><tbody id="cur"></tbody></table></div>
+<div class="scroll"><table><thead><tr><th>Name</th><th>Score</th><th>Rates</th><th>Inflation</th><th>2y yield trend</th><th>COT</th><th>News</th></tr></thead><tbody id="cur"></tbody></table></div>
 <p class="meta">Inputs: +1 supportive, 0 flat, −1 negative, a dash means no data.</p></section>
 <section><h2>Headlines</h2><ul id="news"></ul></section>
 <section><h2>Scorecard</h2>
@@ -71,13 +71,15 @@ async function load(){
 }
 function why(p){
   const[b,q]=p.pair.split("/"),cb=D.currencies[b].comps,cq=D.currencies[q].comps;
-  const W={rates:["falling","flat","rising"],infl:["cooling","flat","heating up"],cot:["cutting longs","flat","adding longs"]};
-  const L={rates:"Rates",infl:"Inflation",cot:"Positioning"},out=[];
-  for(const k of["rates","infl","cot"]){
+  const W={yld:["falling","flat","rising"],rates:["falling","flat","rising"],infl:["cooling","flat","heating up"],cot:["cutting longs","flat","adding longs"]};
+  const L={rates:"Rates",infl:"Inflation",yld:"2y yield trend",cot:"Positioning"},out=[];
+  for(const k of["rates","infl","yld","cot"]){
     const parts=[];
     [[b,cb],[q,cq]].forEach(([c,m])=>{if(m[k]!==null&&m[k]!==undefined)parts.push(c+" "+W[k][Math.sign(m[k])+1]+(k==="cot"&&Math.abs(m[k])===0.5?" (crowded)":"")+(k==="cot"&&D.currencies[c].cotPct!=null?" (52w pct "+D.currencies[c].cotPct+")":""))});
     if(parts.length)out.push(L[k]+": "+parts.join(", "));
   }
+  const yb=D.currencies[b].yield2y,yq=D.currencies[q].yield2y;
+  if(yb!=null&&yq!=null)out.push("2y yields: "+b+" "+yb.toFixed(2)+"%, "+q+" "+yq.toFixed(2)+"% (gap "+sg(+(yb-yq).toFixed(2))+")");
   const ns=[[b,cb.news],[q,cq.news]].filter(x=>x[1]!==null&&x[1]!==undefined);
   if(ns.length)out.push("News tone: "+ns.map(x=>x[0]+" "+sg(f(x[1]))).join(", "));
   out.push("Gap "+sg(p.gap)+" (scores "+b+" "+D.currencies[b].score+", "+q+" "+D.currencies[q].score+")");
@@ -100,7 +102,7 @@ function render(){
   ["All","Very bullish","Bullish","Neutral","Bearish","Very bearish"].forEach(x=>{const b=document.createElement("button");b.className="chip";b.textContent=x;b.setAttribute("aria-pressed",x===filt);b.onclick=()=>{filt=x;render()};fl.appendChild(b)});
   const rows=D.pairs.filter(p=>filt==="All"||p.level===filt).sort((a,b)=>Math.abs(b.gap)-Math.abs(a.gap));
   document.getElementById("pairs").innerHTML=rows.length?rows.map(p=>"<tr><td>"+p.pair+"</td><td style='color:"+COL[p.level]+"'><b>"+p.level+"</b></td><td>"+sg(p.gap)+"</td></tr>").join(""):"<tr><td colspan='3'>No pairs at this level right now.</td></tr>";
-  document.getElementById("cur").innerHTML=Object.entries(D.currencies).sort((a,b)=>b[1].score-a[1].score).map(([c,v])=>"<tr><td>"+c+"</td><td><b>"+v.score+"</b></td><td>"+f(v.comps.rates)+"</td><td>"+f(v.comps.infl)+"</td><td>"+f(v.comps.cot)+(v.cotPct!=null?" (pct "+v.cotPct+")":"")+"</td><td>"+f(v.comps.news)+"</td></tr>").join("");
+  document.getElementById("cur").innerHTML=Object.entries(D.currencies).sort((a,b)=>b[1].score-a[1].score).map(([c,v])=>"<tr><td>"+c+"</td><td><b>"+v.score+"</b></td><td>"+f(v.comps.rates)+"</td><td>"+f(v.comps.infl)+"</td><td>"+f(v.comps.yld)+(v.yield2y!=null?" ("+v.yield2y.toFixed(2)+"%)":"")+"</td><td>"+f(v.comps.cot)+(v.cotPct!=null?" (pct "+v.cotPct+")":"")+"</td><td>"+f(v.comps.news)+"</td></tr>").join("");
   document.getElementById("news").innerHTML=D.headlines.length?D.headlines.map(h=>"<li>"+(h.c?"<b>"+h.c+" "+sg(h.s)+"</b> ":"")+(h.url?"<a href='"+encodeURI(h.url)+"' target='_blank' rel='noopener'>"+esc(h.headline)+"</a>":esc(h.headline))+" <span class='meta'>"+esc(h.source||"")+"</span></li>").join(""):"<li class='meta'>No headlines loaded. Add the news keys to enable them.</li>";
   document.getElementById("legend").innerHTML=Object.entries(COL).map(([k,v])=>"<span><i style='background:"+v+"'></i>"+k+"</span>").join("")+"<span>Bias is based on macro data, positioning and news inputs. For informational purposes only.</span>";
 }
