@@ -3,41 +3,59 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>FX Bias</title>
+<title>Weekly Fundamental Bias</title>
 <style>
-:root{--bg:#eef1f4;--card:#fff;--ink:#17212b;--mute:#5f6b78;--line:#d5dbe2;--vb:#0a5c50;--b:#0f7b6c;--n:#6b7682;--br:#c2412d;--vbr:#8a2418}
-@media (prefers-color-scheme:dark){:root{--bg:#141a21;--card:#1d252e;--ink:#e6ebf0;--mute:#9aa6b2;--line:#323d49;--vb:#2fa38f;--b:#3fc2ac;--n:#8c98a4;--br:#f0735d;--vbr:#ff8f7a}}
+:root{color-scheme:dark;--bg:#0a1220;--card:#0f1b2e;--card2:#0c1627;--line:#1f3150;--ink:#e6edf7;--mute:#8aa0bd;--hd:#6aa2ff;--vbr:#c0213f;--br:#f0445b;--n:#8a97a8;--b:#3b82f6;--vb:#22c3ee}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
-main{max-width:980px;margin:0 auto;padding:20px 16px 48px}
-h1{font:600 28px Georgia,serif;margin:0}h2{font:600 18px Georgia,serif;margin:0 0 10px}
-section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
-.meta{color:var(--mute);font-size:13px;margin:4px 0 16px}.warn{color:var(--br)}
-.scroll{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:460px}
-th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}th{font-size:13px;color:var(--mute)}
+main{max-width:1100px;margin:0 auto;padding:22px 16px 48px}
+h1{font:700 30px/1.1 system-ui,sans-serif;letter-spacing:.02em;text-transform:uppercase;margin:0}
+h2{font-size:18px;margin:0 0 10px}
+.sub{color:var(--hd);font-size:18px;margin:4px 0}
+.meta{color:var(--mute);font-size:13px;margin:0 0 18px}.warn{color:var(--br)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:14px;margin-bottom:22px}
+.card,section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+section{margin-bottom:16px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.top b{font-size:20px}.top small{color:var(--mute);border-left:1px solid var(--line);padding-left:10px}
+.gw{position:relative;width:170px;margin:8px auto 0}.gw svg{display:block;width:100%}
+.lvl{position:absolute;left:0;right:0;bottom:0;text-align:center;font-weight:700;font-size:13px;letter-spacing:.04em;text-transform:uppercase}
+.badge{display:block;margin:10px auto;width:70%;text-align:center;border-radius:8px;padding:6px;font-weight:700;color:#fff;text-transform:uppercase}
+.why{background:var(--card2);border-radius:8px;padding:10px 12px;font-size:14px}
+.why h3{margin:0 0 4px;font-size:15px;color:var(--hd);text-transform:uppercase}.why ul{margin:0;padding-left:18px}.why li{margin-bottom:3px}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
 .chip{border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:999px;padding:4px 12px;font:inherit;cursor:pointer}
-.chip[aria-pressed=true]{background:var(--ink);color:var(--card)}
-.Very-bullish{color:var(--vb)}.Bullish{color:var(--b)}.Neutral{color:var(--n)}.Bearish{color:var(--br)}.Very-bearish{color:var(--vbr)}
-li{margin-bottom:6px}a{color:inherit}
-:focus-visible{outline:2px solid var(--b);outline-offset:2px}
+.chip[aria-pressed=true]{background:var(--b);border-color:var(--b)}
+.scroll{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:460px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}th{font-size:13px;color:var(--mute)}
+.legend{display:flex;flex-wrap:wrap;gap:16px;align-items:center;color:var(--mute);font-size:13px}
+.legend i{display:inline-block;width:26px;height:14px;border-radius:4px;vertical-align:middle;margin-right:6px}
+li{margin-bottom:6px}a{color:var(--hd)}
+:focus-visible{outline:2px solid var(--hd);outline-offset:2px}
 </style>
 </head>
 <body>
 <main>
-<h1>FX bias</h1>
+<h1>Weekly fundamental bias</h1>
+<div class="sub">Key pairs &amp; commodities</div>
 <p class="meta" id="meta">Loading the latest data…</p>
-<section><h2>Pairs</h2><div class="chips" id="filters"></div>
+<div class="cards" id="cards"></div>
+<section><h2>All pairs</h2><div class="chips" id="filters"></div>
 <div class="scroll"><table><thead><tr><th>Pair</th><th>Bias</th><th>Gap</th></tr></thead><tbody id="pairs"></tbody></table></div></section>
-<section><h2>Currencies</h2>
-<div class="scroll"><table><thead><tr><th>Currency</th><th>Score</th><th>Rates</th><th>Inflation</th><th>COT</th><th>News</th></tr></thead><tbody id="cur"></tbody></table></div>
-<p class="meta">Inputs: +1 supportive, 0 flat, −1 negative, a dash means no data. News shows −1 to +1.</p></section>
-<section><h2>Headlines behind the news score</h2><ul id="news"></ul></section>
+<section><h2>Currencies and metals</h2>
+<div class="scroll"><table><thead><tr><th>Name</th><th>Score</th><th>Rates</th><th>Inflation</th><th>COT</th><th>News</th></tr></thead><tbody id="cur"></tbody></table></div>
+<p class="meta">Inputs: +1 supportive, 0 flat, −1 negative, a dash means no data.</p></section>
+<section><h2>Headlines</h2><ul id="news"></ul></section>
+<section class="legend" id="legend"></section>
 </main>
 <script>
+// Edit this list to change which pairs appear as cards at the top.
+const WATCH=["XAU/USD","XAG/USD","EUR/USD","GBP/USD","GBP/JPY","EUR/GBP"];
+const NAMES={"XAU/USD":"Gold (XAU/USD)","XAG/USD":"Silver (XAG/USD)"};
+const COL={"Very bullish":"var(--vb)","Bullish":"var(--b)","Neutral":"var(--n)","Bearish":"var(--br)","Very bearish":"var(--vbr)"};
 let D=null,filt="All";
-const cls=l=>l.replace(" ","-");
 const f=v=>v===null||v===undefined?"–":(Math.round(v*100)/100);
+const sg=n=>(n>0?"+":"")+n;
 function esc(s){const d=document.createElement("div");d.textContent=s;return d.innerHTML}
 async function load(){
   try{
@@ -46,17 +64,43 @@ async function load(){
     D=await r.json();render();
   }catch(e){document.getElementById("meta").innerHTML="<span class='warn'>Couldn’t load data: "+esc(e.message)+"</span>"}
 }
+function why(p){
+  const[b,q]=p.pair.split("/"),cb=D.currencies[b].comps,cq=D.currencies[q].comps;
+  const W={rates:["falling","flat","rising"],infl:["cooling","flat","heating up"],cot:["cutting longs","flat","adding longs"]};
+  const L={rates:"Rates",infl:"Inflation",cot:"Positioning"},out=[];
+  for(const k of["rates","infl","cot"]){
+    const parts=[];
+    [[b,cb],[q,cq]].forEach(([c,m])=>{if(m[k]!==null&&m[k]!==undefined)parts.push(c+" "+W[k][m[k]+1])});
+    if(parts.length)out.push(L[k]+": "+parts.join(", "));
+  }
+  const ns=[[b,cb.news],[q,cq.news]].filter(x=>x[1]!==null&&x[1]!==undefined);
+  if(ns.length)out.push("News tone: "+ns.map(x=>x[0]+" "+sg(f(x[1]))).join(", "));
+  out.push("Gap "+sg(p.gap)+" (scores "+b+" "+D.currencies[b].score+", "+q+" "+D.currencies[q].score+")");
+  return out;
+}
+function card(p){
+  const c=COL[p.level],pct=Math.max(4,Math.min(100,(p.gap+100)/2));
+  const arc="M10 62 A50 50 0 0 1 110 62";
+  return "<div class='card'><div class='top'><b>"+esc(NAMES[p.pair]||p.pair)+"</b><small>"+(p.pair.startsWith("XA")?"Commodity":"Forex")+"</small></div>"+
+  "<div class='gw'><svg viewBox='0 0 120 70' role='img' aria-label='"+esc(p.level)+"'><path d='"+arc+"' pathLength='100' fill='none' stroke='var(--line)' stroke-width='12'/>"+
+  "<path d='"+arc+"' pathLength='100' fill='none' stroke='"+c+"' stroke-width='12' stroke-dasharray='"+pct+" 100'/></svg><div class='lvl' style='color:"+c+"'>"+esc(p.level)+"</div></div>"+
+  "<span class='badge' style='background:"+c+"'>"+esc(p.level)+"</span>"+
+  "<div class='why'><h3>Why?</h3><ul>"+why(p).map(x=>"<li>"+esc(x)+"</li>").join("")+"</ul></div></div>";
+}
 function render(){
   const bad=Object.entries(D.status).filter(([,v])=>v!=="ok");
   document.getElementById("meta").innerHTML="Updated "+new Date(D.updated).toLocaleString()+(bad.length?"<br><span class='warn'>Missing inputs: "+bad.map(([k,v])=>esc(k+" ("+v+")")).join("; ")+". Scores use the inputs that did load.</span>":"");
+  document.getElementById("cards").innerHTML=WATCH.map(w=>D.pairs.find(p=>p.pair===w)).filter(Boolean).map(card).join("");
   const fl=document.getElementById("filters");fl.innerHTML="";
   ["All","Very bullish","Bullish","Neutral","Bearish","Very bearish"].forEach(x=>{const b=document.createElement("button");b.className="chip";b.textContent=x;b.setAttribute("aria-pressed",x===filt);b.onclick=()=>{filt=x;render()};fl.appendChild(b)});
   const rows=D.pairs.filter(p=>filt==="All"||p.level===filt).sort((a,b)=>Math.abs(b.gap)-Math.abs(a.gap));
-  document.getElementById("pairs").innerHTML=rows.length?rows.map(p=>"<tr><td>"+p.pair+"</td><td class='"+cls(p.level)+"'><b>"+p.level+"</b></td><td>"+(p.gap>0?"+":"")+p.gap+"</td></tr>").join(""):"<tr><td colspan='3'>No pairs at this level right now.</td></tr>";
+  document.getElementById("pairs").innerHTML=rows.length?rows.map(p=>"<tr><td>"+p.pair+"</td><td style='color:"+COL[p.level]+"'><b>"+p.level+"</b></td><td>"+sg(p.gap)+"</td></tr>").join(""):"<tr><td colspan='3'>No pairs at this level right now.</td></tr>";
   document.getElementById("cur").innerHTML=Object.entries(D.currencies).sort((a,b)=>b[1].score-a[1].score).map(([c,v])=>"<tr><td>"+c+"</td><td><b>"+v.score+"</b></td><td>"+f(v.comps.rates)+"</td><td>"+f(v.comps.infl)+"</td><td>"+f(v.comps.cot)+"</td><td>"+f(v.comps.news)+"</td></tr>").join("");
-  document.getElementById("news").innerHTML=D.headlines.length?D.headlines.map(h=>"<li><b>"+h.c+" "+(h.s>0?"+":"")+h.s+"</b> "+(h.url?"<a href='"+encodeURI(h.url)+"' target='_blank' rel='noopener'>"+esc(h.headline)+"</a>":esc(h.headline))+" <span class='meta'>"+esc(h.source||"")+"</span></li>").join(""):"<li class='meta'>No scored headlines. Check the news keys in your settings.</li>";
+  document.getElementById("news").innerHTML=D.headlines.length?D.headlines.map(h=>"<li>"+(h.c?"<b>"+h.c+" "+sg(h.s)+"</b> ":"")+(h.url?"<a href='"+encodeURI(h.url)+"' target='_blank' rel='noopener'>"+esc(h.headline)+"</a>":esc(h.headline))+" <span class='meta'>"+esc(h.source||"")+"</span></li>").join(""):"<li class='meta'>No headlines loaded. Add the news keys to enable them.</li>";
+  document.getElementById("legend").innerHTML=Object.entries(COL).map(([k,v])=>"<span><i style='background:"+v+"'></i>"+k+"</span>").join("")+"<span>Bias is based on macro data, positioning and news inputs. For informational purposes only.</span>";
 }
 load();
 </script>
 </body>
 </html>
+
