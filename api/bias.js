@@ -8,7 +8,7 @@ const COT = { EUR: "099741", GBP: "096742", JPY: "097741", AUD: "232741", NZD: "
 // [FRED series id, lookback in observations]
 const RATE = { USD: ["IRSTCI01USM156N", 3], EUR: ["IRSTCI01EZM156N", 3], GBP: ["IRSTCI01GBM156N", 3], JPY: ["IRSTCI01JPM156N", 3], AUD: ["IRSTCI01AUM156N", 3], NZD: ["IRSTCI01NZM156N", 3], CAD: ["IRSTCI01CAM156N", 3], CHF: ["IRSTCI01CHM156N", 3] };
 const CPI = { USD: ["CPALTT01USM659N", 3], EUR: ["CPALTT01EZM659N", 3], GBP: ["CPALTT01GBM659N", 3], JPY: ["CPALTT01JPM659N", 3], AUD: ["CPALTT01AUQ659N", 1], NZD: ["CPALTT01NZQ659N", 1], CAD: ["CPALTT01CAM659N", 3], CHF: ["CPALTT01CHM659N", 3] };
-const W = { rates: 1, infl: 1, yld: 1, cot: 1, news: 1 }; // equal weights; news = 20% when all inputs exist
+const W = { rates: 1, infl: 1, yld: 1, cot: 1, news: 1, risk: 1 }; // equal weights; news is about 17% when all inputs exist
 const TTL = { cot: 6 * 36e5, macro: 6 * 36e5, news: 30 * 6e4 };
 
 const mem = {};
@@ -129,6 +129,49 @@ const yields = () => cached("yld", TTL.macro, async () => {
   return out;
 });
 
+// Risk tone from the VIX and the S&P 500 (both daily on FRED). Positive = risk-on, negative = risk-off.
+// How strongly each currency reacts is my starting assumption: untested, so adjust once you have scorecard results.
+const SENS = { AUD: 1, NZD: 1, CAD: 0.5, GBP: 0.25, EUR: 0, USD: -0.25, JPY: -1, CHF: -1 };
+async function fredRecent(id, n) {
+  const key = process.env.FRED_API_KEY;
+  if (!key) throw new Error("FRED_API_KEY missing");
+  const j = await getJson(`https://api.stlouisfed.org/fred/series/observations?series_id=${id}&api_key=${key}&file_type=json&sort_order=desc&limit=${n + 10}`);
+  return j.observations.filter(x => x.value !== ".").map(x => +x.value).reverse();
+}
+const risk = () => cached("risk", TTL.macro, async () => {
+  const [vix, spx] = await Promise.all([fredRecent("VIXCLS", 5), fredRecent("SP500", 50)]);
+  if (!vix.length || spx.length < 40) throw new Error("not enough VIX or S&P 500 data");
+  const v = vix[vix.length - 1], last = spx[spx.length - 1], win = spx.slice(-50);
+  const ma = win.reduce((a, b) => a + b, 0) / win.length;
+  const vixSig = v < 16 ? 1 : v > 24 ? -1 : 0;
+  const spxSig = last > ma * 1.01 ? 1 : last < ma * 0.99 ? -1 : 0;
+  return { tone: (vixSig + spxSig) / 2, vix: v, spx: last, ma };
+});
+
+// Retail positioning from the Myfxbook API (needs a free Myfxbook account). Display only, not part of the bias score.
+// Cached for 20 minutes because Myfxbook limits how often the outlook can be requested.
+const outlook = () => cached("outlook", 20 * 6e4, async () => {
+  const em = process.env.MYFXBOOK_EMAIL, pw = process.env.MYFXBOOK_PASSWORD;
+  if (!em || !pw) throw new Error("MYFXBOOK_EMAIL or MYFXBOOK_PASSWORD not set");
+  const base = "https://www.myfxbook.com/api/";
+  const l = await getJson(`${base}login.json?email=${encodeURIComponent(em)}&password=${encodeURIComponent(pw)}`);
+  if (l.error || !l.session) throw new Error("Myfxbook login failed: " + (l.message || "check the email and password"));
+  const ses = encodeURIComponent(l.session);
+  try {
+    const j = await getJson(`${base}get-community-outlook.json?session=${ses}`);
+    if (j.error) throw new Error("Myfxbook: " + (j.message || "request failed"));
+    // Field names follow Myfxbook's API documentation. Verify them if a column shows empty.
+    return (j.symbols || []).map(s => ({
+      name: s.name, shortPct: +s.shortPercentage, longPct: +s.longPercentage,
+      shortPos: +s.shortPositions, longPos: +s.longPositions,
+      shortLots: +s.shortVolume, longLots: +s.longVolume, total: +s.totalPositions,
+      avgShort: +s.avgShortPrice, avgLong: +s.avgLongPrice
+    }));
+  } finally {
+    getJson(`${base}logout.json?session=${ses}`).catch(() => {});
+  }
+});
+
 const level = g => (g >= 50 ? "Very bullish" : g >= 25 ? "Bullish" : g <= -50 ? "Very bearish" : g <= -25 ? "Bearish" : "Neutral");
 
 module.exports = async (req, res) => {
@@ -136,15 +179,16 @@ module.exports = async (req, res) => {
     res.status(401).json({ error: "Access key required" });
     return;
   }
-  const [m, c, n, y] = await Promise.all([macro(), cot(), news(), yields()]);
+  const [m, c, n, y, r, rt] = await Promise.all([macro(), cot(), news(), yields(), risk(), outlook()]);
   const miss = CUR.filter(x => y.error || !y[x]);
-  const status = { yields: miss.length ? "no data for " + miss.join(", ") : "ok", macro: m.error ? m.error : "ok", cot: c.error ? c.error : "ok", news: n.error ? n.error : n.unscored ? "headlines only, scoring needs ANTHROPIC_API_KEY" : "ok" };
+  const status = { retail: rt.error ? rt.error : "ok", risk: r.error ? r.error : "ok", yields: miss.length ? "no data for " + miss.join(", ") : "ok", macro: m.error ? m.error : "ok", cot: c.error ? c.error : "ok", news: n.error ? n.error : n.unscored ? "headlines only, scoring needs ANTHROPIC_API_KEY" : "ok" };
   const currencies = {};
   for (const cu of CUR) {
     const comps = {
       rates: m.error ? null : m[cu].rates,
       infl: m.error ? null : m[cu].infl,
       yld: y.error || !y[cu] ? null : sign(y[cu].chg, 0.1), // +/-1 if the 2y yield moved more than 10bp in about 4 weeks
+      risk: r.error ? null : Math.round(r.tone * SENS[cu] * 100) / 100,
       cot: c.error ? null : c.vals[cu],
       news: n.error ? null : n.scores[cu]
     };
@@ -164,5 +208,5 @@ module.exports = async (req, res) => {
     return { pair: p, gap, level: level(gap) };
   });
   res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate=600");
-  res.status(200).json({ updated: new Date().toISOString(), status, currencies, pairs, headlines: n.error ? [] : n.items });
+  res.status(200).json({ updated: new Date().toISOString(), status, risk: r.error ? null : r, retail: rt.error ? null : { symbols: rt }, currencies, pairs, headlines: n.error ? [] : n.items });
 };
