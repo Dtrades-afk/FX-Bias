@@ -46,6 +46,11 @@ li{margin-bottom:6px}a{color:var(--hd)}
 <div class="scroll"><table><thead><tr><th>Name</th><th>Score</th><th>Rates</th><th>Inflation</th><th>COT</th><th>News</th></tr></thead><tbody id="cur"></tbody></table></div>
 <p class="meta">Inputs: +1 supportive, 0 flat, −1 negative, a dash means no data.</p></section>
 <section><h2>Headlines</h2><ul id="news"></ul></section>
+<section><h2>Scorecard</h2>
+<p class="meta">How past readings compared with what price did over the next 5 trading days. Each day you open the site, its readings are saved in this browser.</p>
+<div id="score"><p class="meta">Checking saved readings…</p></div>
+<button class="chip" onclick="exportLog()">Download log (CSV)</button>
+<p class="meta">Prices are ECB daily reference rates from Frankfurter, not your broker’s prices. Gold and silver are logged but not checked, because no price source is connected for them. The log lives only in this browser, so it grows only on days you open the site on this device. Small samples can mislead.</p></section>
 <section class="legend" id="legend"></section>
 </main>
 <script>
@@ -61,7 +66,7 @@ async function load(){
   try{
     const r=await fetch("/api/bias"+location.search);
     if(!r.ok)throw new Error(r.status===401?"This site needs an access key. Add ?key=YOUR_KEY to the address.":"The server returned "+r.status);
-    D=await r.json();render();
+    D=await r.json();render();logReadings();scorecard();
   }catch(e){document.getElementById("meta").innerHTML="<span class='warn'>Couldn’t load data: "+esc(e.message)+"</span>"}
 }
 function why(p){
@@ -70,7 +75,7 @@ function why(p){
   const L={rates:"Rates",infl:"Inflation",cot:"Positioning"},out=[];
   for(const k of["rates","infl","cot"]){
     const parts=[];
-    [[b,cb],[q,cq]].forEach(([c,m])=>{if(m[k]!==null&&m[k]!==undefined)parts.push(c+" "+W[k][m[k]+1])});
+    [[b,cb],[q,cq]].forEach(([c,m])=>{if(m[k]!==null&&m[k]!==undefined)parts.push(c+" "+W[k][Math.sign(m[k])+1]+(k==="cot"&&Math.abs(m[k])===0.5?" (crowded)":"")+(k==="cot"&&D.currencies[c].cotPct!=null?" (52w pct "+D.currencies[c].cotPct+")":""))});
     if(parts.length)out.push(L[k]+": "+parts.join(", "));
   }
   const ns=[[b,cb.news],[q,cq.news]].filter(x=>x[1]!==null&&x[1]!==undefined);
@@ -95,9 +100,53 @@ function render(){
   ["All","Very bullish","Bullish","Neutral","Bearish","Very bearish"].forEach(x=>{const b=document.createElement("button");b.className="chip";b.textContent=x;b.setAttribute("aria-pressed",x===filt);b.onclick=()=>{filt=x;render()};fl.appendChild(b)});
   const rows=D.pairs.filter(p=>filt==="All"||p.level===filt).sort((a,b)=>Math.abs(b.gap)-Math.abs(a.gap));
   document.getElementById("pairs").innerHTML=rows.length?rows.map(p=>"<tr><td>"+p.pair+"</td><td style='color:"+COL[p.level]+"'><b>"+p.level+"</b></td><td>"+sg(p.gap)+"</td></tr>").join(""):"<tr><td colspan='3'>No pairs at this level right now.</td></tr>";
-  document.getElementById("cur").innerHTML=Object.entries(D.currencies).sort((a,b)=>b[1].score-a[1].score).map(([c,v])=>"<tr><td>"+c+"</td><td><b>"+v.score+"</b></td><td>"+f(v.comps.rates)+"</td><td>"+f(v.comps.infl)+"</td><td>"+f(v.comps.cot)+"</td><td>"+f(v.comps.news)+"</td></tr>").join("");
+  document.getElementById("cur").innerHTML=Object.entries(D.currencies).sort((a,b)=>b[1].score-a[1].score).map(([c,v])=>"<tr><td>"+c+"</td><td><b>"+v.score+"</b></td><td>"+f(v.comps.rates)+"</td><td>"+f(v.comps.infl)+"</td><td>"+f(v.comps.cot)+(v.cotPct!=null?" (pct "+v.cotPct+")":"")+"</td><td>"+f(v.comps.news)+"</td></tr>").join("");
   document.getElementById("news").innerHTML=D.headlines.length?D.headlines.map(h=>"<li>"+(h.c?"<b>"+h.c+" "+sg(h.s)+"</b> ":"")+(h.url?"<a href='"+encodeURI(h.url)+"' target='_blank' rel='noopener'>"+esc(h.headline)+"</a>":esc(h.headline))+" <span class='meta'>"+esc(h.source||"")+"</span></li>").join(""):"<li class='meta'>No headlines loaded. Add the news keys to enable them.</li>";
   document.getElementById("legend").innerHTML=Object.entries(COL).map(([k,v])=>"<span><i style='background:"+v+"'></i>"+k+"</span>").join("")+"<span>Bias is based on macro data, positioning and news inputs. For informational purposes only.</span>";
+}
+const LOGKEY="fxbias-log-v1",H=5,APIS=["https://api.frankfurter.dev/v1","https://api.frankfurter.app"];
+function getLog(){try{return JSON.parse(localStorage.getItem(LOGKEY))||[]}catch(e){return[]}}
+function logReadings(){
+  try{
+    const d=D.updated.slice(0,10),log=getLog(),have=new Set(log.filter(x=>x.d===d).map(x=>x.p));
+    D.pairs.forEach(p=>{if(!have.has(p.pair))log.push({d,p:p.pair,l:p.level,g:p.gap})});
+    localStorage.setItem(LOGKEY,JSON.stringify(log));
+  }catch(e){}
+}
+async function series(start,end){
+  for(const base of APIS){
+    try{const r=await fetch(base+"/"+start+".."+end+"?from=USD&to=EUR,GBP,JPY,AUD,NZD,CAD,CHF");if(r.ok)return(await r.json()).rates}catch(e){}
+  }
+  throw new Error("price source unavailable");
+}
+async function scorecard(){
+  const el=document.getElementById("score"),log=getLog().filter(x=>!x.p.startsWith("XA"));
+  if(!log.length){el.innerHTML="<p class='meta'>No readings saved yet. One is saved for each day you open the site.</p>";return}
+  const days=[...new Set(log.map(x=>x.d))].sort();
+  let R;
+  try{R=await series(days[0],new Date().toISOString().slice(0,10))}
+  catch(e){el.innerHTML="<p class='meta warn'>Couldn’t load prices to check readings ("+esc(e.message)+"). "+log.length+" readings are saved.</p>";return}
+  const ds=Object.keys(R).sort(),at=(i,c)=>c==="USD"?1:R[ds[i]][c],S={};
+  let done=0;
+  log.forEach(x=>{
+    let i=-1;ds.forEach((v,k)=>{if(v<=x.d)i=k});
+    if(i<0||i+H>=ds.length)return;
+    const[b,q]=x.p.split("/"),ret=((at(i+H,q)/at(i+H,b))/(at(i,q)/at(i,b))-1)*100;
+    const dir=x.l.toLowerCase().includes("bullish")?1:x.l.toLowerCase().includes("bearish")?-1:0;
+    const s=S[x.l]=S[x.l]||{n:0,hit:0,sum:0,abs:0};
+    s.n++;done++;s.abs+=Math.abs(ret);
+    if(dir){s.sum+=dir*ret;if(dir*ret>0)s.hit++}
+  });
+  if(!done){el.innerHTML="<p class='meta'>Collecting data: "+log.length+" readings saved from "+days.length+" day(s). Results appear once a reading is "+H+" trading days old.</p>";return}
+  const rows=["Very bullish","Bullish","Neutral","Bearish","Very bearish"].filter(l=>S[l]).map(l=>{
+    const s=S[l],dir=l!=="Neutral";
+    return "<tr><td style='color:"+COL[l]+"'><b>"+l+"</b></td><td>"+s.n+"</td><td>"+(dir?Math.round(s.hit/s.n*100)+"%":"–")+"</td><td>"+(dir?sg(+(s.sum/s.n).toFixed(2))+"%":"avg move "+(s.abs/s.n).toFixed(2)+"%")+"</td></tr>";
+  }).join("");
+  el.innerHTML="<div class='scroll'><table><thead><tr><th>Reading</th><th>Checked</th><th>Right direction</th><th>Avg return in bias direction</th></tr></thead><tbody>"+rows+"</tbody></table></div>";
+}
+function exportLog(){
+  const csv="date,pair,level,gap\n"+getLog().map(x=>[x.d,x.p,x.l,x.g].join(",")).join("\n");
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="fx-bias-log.csv";a.click();
 }
 load();
 </script>
