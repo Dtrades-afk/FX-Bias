@@ -1,9 +1,10 @@
 // Runs on Vercel as a serverless function. Needs Node 18+ (built-in fetch).
 const CUR = ["USD", "EUR", "GBP", "JPY", "AUD", "NZD", "CAD", "CHF"];
-const PAIRS = "EUR/USD GBP/USD AUD/USD NZD/USD USD/JPY USD/CAD USD/CHF EUR/GBP EUR/JPY GBP/JPY AUD/JPY EUR/AUD EUR/CAD EUR/CHF EUR/NZD GBP/AUD GBP/CAD GBP/CHF GBP/NZD AUD/CAD AUD/CHF AUD/NZD NZD/CAD NZD/CHF NZD/JPY CAD/JPY CHF/JPY CAD/CHF".split(" ");
+const PAIRS = "EUR/USD GBP/USD AUD/USD NZD/USD USD/JPY USD/CAD USD/CHF EUR/GBP EUR/JPY GBP/JPY AUD/JPY EUR/AUD EUR/CAD EUR/CHF EUR/NZD GBP/AUD GBP/CAD GBP/CHF GBP/NZD AUD/CAD AUD/CHF AUD/NZD NZD/CAD NZD/CHF NZD/JPY CAD/JPY CHF/JPY CAD/CHF XAU/USD XAG/USD".split(" ");
+const METALS = ["XAU", "XAG"];
 
 // CONFIG: verify these IDs against the CFTC and FRED sites before relying on them.
-const COT = { EUR: "099741", GBP: "096742", JPY: "097741", AUD: "232741", NZD: "112741", CAD: "090741", CHF: "092741", USD: "098662" };
+const COT = { EUR: "099741", GBP: "096742", JPY: "097741", AUD: "232741", NZD: "112741", CAD: "090741", CHF: "092741", USD: "098662", XAU: "088691", XAG: "084691" };
 // [FRED series id, lookback in observations]
 const RATE = { USD: ["IRSTCI01USM156N", 3], EUR: ["IRSTCI01EZM156N", 3], GBP: ["IRSTCI01GBM156N", 3], JPY: ["IRSTCI01JPM156N", 3], AUD: ["IRSTCI01AUM156N", 3], NZD: ["IRSTCI01NZM156N", 3], CAD: ["IRSTCI01CAM156N", 3], CHF: ["IRSTCI01CHM156N", 3] };
 const CPI = { USD: ["CPALTT01USM659N", 3], EUR: ["CPALTT01EZM659N", 3], GBP: ["CPALTT01GBM659N", 3], JPY: ["CPALTT01JPM659N", 3], AUD: ["CPALTT01AUQ659N", 1], NZD: ["CPALTT01NZQ659N", 1], CAD: ["CPALTT01CAM659N", 3], CHF: ["CPALTT01CHM659N", 3] };
@@ -48,7 +49,7 @@ const cot = () => cached("cot", TTL.cot, async () => {
   const p = new URLSearchParams({ "$where": `cftc_contract_market_code in(${codes})`, "$order": "report_date_as_yyyy_mm_dd DESC", "$limit": "40" });
   const rows = await getJson("https://publicreporting.cftc.gov/resource/6dca-aqww.json?" + p);
   const out = {};
-  for (const c of CUR) {
+  for (const c of Object.keys(COT)) {
     const r = rows.filter(x => x.cftc_contract_market_code === COT[c]).slice(0, 2);
     if (r.length < 2) { out[c] = null; continue; }
     const net = x => +x.noncomm_positions_long_all - +x.noncomm_positions_short_all;
@@ -59,8 +60,13 @@ const cot = () => cached("cot", TTL.cot, async () => {
 
 const news = () => cached("news", TTL.news, async () => {
   const fk = process.env.FINNHUB_API_KEY, ak = process.env.ANTHROPIC_API_KEY;
-  if (!fk || !ak) throw new Error("FINNHUB_API_KEY or ANTHROPIC_API_KEY missing");
+  if (!fk) throw new Error("FINNHUB_API_KEY missing");
   const raw = (await getJson(`https://finnhub.io/api/v1/news?category=forex&token=${fk}`)).slice(0, 40);
+  if (!ak) {
+    const scores = {};
+    CUR.forEach(c => (scores[c] = null));
+    return { scores, unscored: true, items: raw.map(n => ({ headline: n.headline, source: n.source, url: n.url })) };
+  }
   const list = raw.map((n, i) => `${i}: ${n.headline}`).join("\n");
   const res = await getJson("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -93,7 +99,7 @@ module.exports = async (req, res) => {
     return;
   }
   const [m, c, n] = await Promise.all([macro(), cot(), news()]);
-  const status = { macro: m.error ? m.error : "ok", cot: c.error ? c.error : "ok", news: n.error ? n.error : "ok" };
+  const status = { macro: m.error ? m.error : "ok", cot: c.error ? c.error : "ok", news: n.error ? n.error : n.unscored ? "headlines only, scoring needs ANTHROPIC_API_KEY" : "ok" };
   const currencies = {};
   for (const cu of CUR) {
     const comps = {
@@ -105,6 +111,12 @@ module.exports = async (req, res) => {
     let t = 0, w = 0;
     for (const k in comps) if (comps[k] !== null) { t += W[k] * comps[k]; w += W[k]; }
     currencies[cu] = { score: w ? Math.round((t / w) * 100) : 0, comps };
+  }
+  // Metals: own COT positioning only. A neutral prior of weight 1 damps the score (max +/-50),
+  // because the dollar side of XAU/USD and XAG/USD already carries rates and inflation.
+  for (const a of METALS) {
+    const ct = c.error ? null : c[a];
+    currencies[a] = { score: ct === null ? 0 : Math.round((ct / 2) * 100), comps: { rates: null, infl: null, cot: ct, news: null } };
   }
   const pairs = PAIRS.map(p => {
     const [b, q] = p.split("/");
