@@ -31,6 +31,12 @@ th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}th{fon
 .legend{display:flex;flex-wrap:wrap;gap:16px;align-items:center;color:var(--mute);font-size:13px}
 .legend i{display:inline-block;width:26px;height:14px;border-radius:4px;vertical-align:middle;margin-right:6px}
 li{margin-bottom:6px}a{color:var(--hd)}
+:root{--amber:#f5a524}[hidden]{display:none!important}
+.tabs{display:flex;gap:6px;overflow-x:auto;margin:0 0 16px;padding-bottom:4px}.tabs .chip{white-space:nowrap}
+.br{display:grid;grid-template-columns:44px 1fr 44px;gap:8px;align-items:center;margin-bottom:8px}
+.bar{position:relative;height:10px;border-radius:5px;background:var(--line)}.bar b{position:absolute;top:0;bottom:0;border-radius:5px}
+.bar .mid,.bar .mk{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--mute)}.bar .mid{left:50%}
+select{background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:3px 8px;font:inherit;margin-left:8px}
 :focus-visible{outline:2px solid var(--hd);outline-offset:2px}
 </style>
 </head>
@@ -39,14 +45,18 @@ li{margin-bottom:6px}a{color:var(--hd)}
 <h1>Weekly fundamental bias</h1>
 <div class="sub">Key pairs &amp; commodities</div>
 <p class="meta" id="meta">Loading the latest data…</p>
-<div class="cards" id="cards"></div>
-<section><h2>All pairs</h2><div class="chips" id="filters"></div>
+<nav class="tabs" id="tabs" aria-label="Sections"></nav>
+<div class="cards" id="cards" data-tab="home"></div>
+<section data-tab="charts"><h2>Currency strength</h2><div id="strength"></div><p class="meta">Score from −100 (weak) to +100 (strong).</p></section>
+<section data-tab="charts"><h2>COT positioning (52-week percentile)</h2><div id="cotbars"></div><p class="meta">The marks at 10 and 90 show crowded zones. Amber bars are crowded.</p></section>
+<section data-tab="charts"><h2>Gap history <select id="hp" aria-label="Pair"></select></h2><div id="hist"></div><p class="meta">Built from the readings saved in this browser. Dashed lines are the ±25 and ±50 bias thresholds.</p></section>
+<section data-tab="pairs"><h2>All pairs</h2><div class="chips" id="filters"></div>
 <div class="scroll"><table><thead><tr><th>Pair</th><th>Bias</th><th>Gap</th></tr></thead><tbody id="pairs"></tbody></table></div></section>
-<section><h2>Currencies and metals</h2>
+<section data-tab="data"><h2>Currencies and metals</h2>
 <div class="scroll"><table><thead><tr><th>Name</th><th>Score</th><th>Rates</th><th>Inflation</th><th>2y yield trend</th><th>COT</th><th>News</th></tr></thead><tbody id="cur"></tbody></table></div>
 <p class="meta">Inputs: +1 supportive, 0 flat, −1 negative, a dash means no data.</p></section>
-<section><h2>Headlines</h2><ul id="news"></ul></section>
-<section><h2>Scorecard</h2>
+<section data-tab="news"><h2>Headlines</h2><ul id="news"></ul></section>
+<section data-tab="score"><h2>Scorecard</h2>
 <p class="meta">How past readings compared with what price did over the next 5 trading days. Each day you open the site, its readings are saved in this browser.</p>
 <div id="score"><p class="meta">Checking saved readings…</p></div>
 <button class="chip" onclick="exportLog()">Download log (CSV)</button>
@@ -66,7 +76,7 @@ async function load(){
   try{
     const r=await fetch("/api/bias"+location.search);
     if(!r.ok)throw new Error(r.status===401?"This site needs an access key. Add ?key=YOUR_KEY to the address.":"The server returned "+r.status);
-    D=await r.json();render();logReadings();scorecard();
+    D=await r.json();render();logReadings();drawCharts();scorecard();
   }catch(e){document.getElementById("meta").innerHTML="<span class='warn'>Couldn’t load data: "+esc(e.message)+"</span>"}
 }
 function why(p){
@@ -104,7 +114,7 @@ function render(){
   document.getElementById("pairs").innerHTML=rows.length?rows.map(p=>"<tr><td>"+p.pair+"</td><td style='color:"+COL[p.level]+"'><b>"+p.level+"</b></td><td>"+sg(p.gap)+"</td></tr>").join(""):"<tr><td colspan='3'>No pairs at this level right now.</td></tr>";
   document.getElementById("cur").innerHTML=Object.entries(D.currencies).sort((a,b)=>b[1].score-a[1].score).map(([c,v])=>"<tr><td>"+c+"</td><td><b>"+v.score+"</b></td><td>"+f(v.comps.rates)+"</td><td>"+f(v.comps.infl)+"</td><td>"+f(v.comps.yld)+(v.yield2y!=null?" ("+v.yield2y.toFixed(2)+"%)":"")+"</td><td>"+f(v.comps.cot)+(v.cotPct!=null?" (pct "+v.cotPct+")":"")+"</td><td>"+f(v.comps.news)+"</td></tr>").join("");
   document.getElementById("news").innerHTML=D.headlines.length?D.headlines.map(h=>"<li>"+(h.c?"<b>"+h.c+" "+sg(h.s)+"</b> ":"")+(h.url?"<a href='"+encodeURI(h.url)+"' target='_blank' rel='noopener'>"+esc(h.headline)+"</a>":esc(h.headline))+" <span class='meta'>"+esc(h.source||"")+"</span></li>").join(""):"<li class='meta'>No headlines loaded. Add the news keys to enable them.</li>";
-  document.getElementById("legend").innerHTML=Object.entries(COL).map(([k,v])=>"<span><i style='background:"+v+"'></i>"+k+"</span>").join("")+"<span>Bias is based on macro data, positioning and news inputs. For informational purposes only.</span>";
+  document.getElementById("legend").innerHTML=Object.entries(COL).map(([k,v])=>"<span><i style='background:"+v+"'></i>"+k+"</span>").join("")+"<span>Bias is based on macro data, positioning and news inputs. For informational purposes only.</span>";drawCharts();
 }
 const LOGKEY="fxbias-log-v1",H=5,APIS=["https://api.frankfurter.dev/v1","https://api.frankfurter.app"];
 function getLog(){try{return JSON.parse(localStorage.getItem(LOGKEY))||[]}catch(e){return[]}}
@@ -150,6 +160,41 @@ function exportLog(){
   const csv="date,pair,level,gap\n"+getLog().map(x=>[x.d,x.p,x.l,x.g].join(",")).join("\n");
   const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="fx-bias-log.csv";a.click();
 }
+const TABS=[["home","Home"],["pairs","Pairs"],["charts","Charts"],["news","News"],["score","Scorecard"],["data","Data"]];
+let TAB=(location.hash||"#home").slice(1),HP="EUR/USD";
+function showTab(t){
+  if(!TABS.some(x=>x[0]===t))t="home";
+  TAB=t;
+  try{history.replaceState(null,"",location.pathname+location.search+"#"+t)}catch(e){}
+  document.querySelectorAll("[data-tab]").forEach(e=>e.hidden=e.dataset.tab!==t);
+  const n=document.getElementById("tabs");n.innerHTML="";
+  TABS.forEach(([k,l])=>{const b=document.createElement("button");b.className="chip";b.textContent=l;b.setAttribute("aria-pressed",k===t);b.onclick=()=>showTab(k);n.appendChild(b)});
+}
+function drawCharts(){
+  if(!D)return;
+  const cur=Object.entries(D.currencies).sort((a,b)=>b[1].score-a[1].score);
+  document.getElementById("strength").innerHTML=cur.map(([c,v])=>{
+    const s=v.score,col=s>0?COL.Bullish:s<0?COL.Bearish:COL.Neutral;
+    return "<div class='br'><span>"+c+"</span><div class='bar'><i class='mid'></i><b style='left:"+(s<0?50+s/2:50)+"%;width:"+Math.abs(s)/2+"%;background:"+col+"'></b></div><span>"+s+"</span></div>";
+  }).join("");
+  const cp=cur.filter(([,v])=>v.cotPct!=null);
+  document.getElementById("cotbars").innerHTML=cp.length?cp.map(([c,v])=>{
+    const p=v.cotPct,col=p>=90||p<=10?"var(--amber)":"var(--b)";
+    return "<div class='br'><span>"+c+"</span><div class='bar'><i class='mk' style='left:10%'></i><i class='mk' style='left:90%'></i><b style='left:0;width:"+p+"%;background:"+col+"'></b></div><span>"+p+"</span></div>";
+  }).join(""):"<p class='meta'>No COT history loaded.</p>";
+  const sel=document.getElementById("hp");
+  sel.innerHTML=D.pairs.map(p=>"<option"+(p.pair===HP?" selected":"")+">"+p.pair+"</option>").join("");
+  sel.onchange=()=>{HP=sel.value;drawCharts()};
+  const pts=getLog().filter(x=>x.p===HP).sort((a,b)=>a.d<b.d?-1:1),el=document.getElementById("hist");
+  if(pts.length<2){el.innerHTML="<p class='meta'>Needs readings from at least 2 days for this pair. "+pts.length+" saved so far.</p>";return}
+  const X=i=>40+i*(540/(pts.length-1)),Y=g=>110-Math.max(-100,Math.min(100,g));
+  el.innerHTML="<svg viewBox='0 0 600 230' style='width:100%;max-width:700px' role='img' aria-label='Gap history for "+HP+"'>"+
+    [[0,"0"],[25,"+25"],[-25,"−25"],[50,"+50"],[-50,"−50"]].map(([g,l])=>"<line x1='40' x2='580' y1='"+Y(g)+"' y2='"+Y(g)+"' stroke='var(--line)'"+(g?" stroke-dasharray='4 4'":"")+"/><text x='34' y='"+(Y(g)+4)+"' text-anchor='end' font-size='11' fill='var(--mute)'>"+l+"</text>").join("")+
+    "<polyline fill='none' stroke='var(--hd)' stroke-width='2' points='"+pts.map((x,i)=>X(i)+","+Y(x.g)).join(" ")+"'/>"+
+    pts.map((x,i)=>"<circle cx='"+X(i)+"' cy='"+Y(x.g)+"' r='4' fill='"+(COL[x.l]||"var(--n)")+"'><title>"+esc(x.d+": "+x.l+" ("+sg(x.g)+")")+"</title></circle>").join("")+
+    "<text x='40' y='226' font-size='11' fill='var(--mute)'>"+esc(pts[0].d)+"</text><text x='580' y='226' text-anchor='end' font-size='11' fill='var(--mute)'>"+esc(pts[pts.length-1].d)+"</text></svg>";
+}
+showTab(TAB);
 load();
 </script>
 </body>
