@@ -312,7 +312,7 @@ function drawSent(){
 let RALL=false;
 function drawRetail(){
   const el=document.getElementById("retail"),bt=document.getElementById("rtoggle"),R=D.retail&&D.retail.symbols;
-  if(!R||!R.length){bt.hidden=true;el.innerHTML="<p class='meta'>Retail positioning isn’t set up or didn’t load. Add MYFXBOOK_EMAIL and MYFXBOOK_PASSWORD in Vercel to turn it on.</p>";return}
+  if(!R||!R.length){bt.hidden=true;const why=D.status&&D.status.retail&&D.status.retail!=="ok"?D.status.retail:D.status&&D.status.retail==="ok"?"Myfxbook returned no symbols":"the server isn’t returning retail data, so check that api/bias.js is the latest version";el.innerHTML="<p class='meta warn'>Retail positioning didn’t load: "+esc(why)+"</p>";return}
   bt.hidden=false;bt.textContent=RALL?"Show watchlist only":"Show all symbols";bt.onclick=()=>{RALL=!RALL;drawRetail()};
   const tot=R.reduce((s,x)=>s+(x.total||0),0)||1,want=WATCH.map(w=>w.replace("/","")),n=v=>isFinite(v)?v:0;
   const px=v=>!isFinite(v)||!v?"–":v>=100?v.toFixed(2):v.toFixed(4);
