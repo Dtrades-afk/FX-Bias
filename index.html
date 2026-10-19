@@ -58,6 +58,7 @@ li{margin-bottom:6px}a{color:var(--hd)}
 .tr{display:flex;height:10px;border-radius:5px;overflow:hidden;min-width:150px;background:var(--line)}.tr b{display:block;height:100%}
 .tr+small,.pop+small{display:block;color:var(--mute);font-size:12px;margin-top:3px}.pop{height:10px;border-radius:5px;background:var(--line);min-width:110px;overflow:hidden}.pop b{display:block;height:100%;background:var(--hd)}
 .cb{display:grid;grid-template-columns:1fr 36px;gap:8px;align-items:center;min-width:150px}td.conf{color:var(--amber);font-weight:600}
+.pxgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}.pxc{min-height:240px}.pxc small{display:block;color:var(--mute);font-size:12px;margin-top:4px}.pxc small a{color:var(--mute)}
 #cottable th,#cottable td{padding:7px 10px}#cottable th[data-k]{cursor:pointer;white-space:nowrap}#cottable .n{text-align:right;font-variant-numeric:tabular-nums}
 @media(max-width:420px){.mid2{grid-template-columns:90px 1fr}.sp{grid-column:1/-1}}
 .tabs{display:flex;gap:6px;overflow-x:auto;margin:0 0 16px;padding-bottom:4px}.tabs .chip{white-space:nowrap}
@@ -78,6 +79,7 @@ select{background:var(--card2);color:var(--ink);border:1px solid var(--line);bor
 </header>
 <div class="strip" id="strip" data-tab="overview"></div>
 <div class="cards" id="cards" data-tab="overview"></div>
+<section data-tab="charts"><h2>Price charts</h2><div class="chips" id="pxchips"></div><div class="pxgrid" id="pxgrid"></div></section>
 <section data-tab="charts" class="plain"><h2>Market sentiment</h2><div class="sgrid" id="sent"></div></section>
 <section data-tab="charts"><h2>Fundamentals vs sentiment</h2><div class="scroll" id="sfboard"></div><p class="meta">Each bar is the gap between the two currencies on a −100 to +100 scale. Fundamentals combine rates, inflation and 2-year yields. Sentiment combines positioning, risk tone and news. Conflict means the two point in opposite directions.</p></section>
 <section data-tab="charts"><h2>Currency strength</h2><div id="strength"></div><p class="meta">Score from −100 (weak) to +100 (strong).</p></section>
@@ -216,6 +218,7 @@ function showTab(t){
   const n=document.getElementById("tabs");n.innerHTML="";
   TABS.forEach(([k,l])=>{const b=document.createElement("button");b.className="chip";b.textContent=l;b.setAttribute("aria-pressed",k===t);b.onclick=()=>showTab(k);n.appendChild(b)});
   if(t==="news")loadCal();
+  if(t==="charts")loadPx();
 }
 function drawCharts(){
   if(!D)return;
@@ -338,6 +341,27 @@ function drawCot(){
     rows.map(x=>"<tr>"+C.map(c=>c[0]==="sym"?"<td><b>"+esc(x.sym)+"</b></td>":"<td class='n' style='"+c[3](x)+"'>"+c[2](x)+"</td>").join("")+"</tr>").join("")+"</tbody></table>";
   el.querySelectorAll("th[data-k]").forEach(th=>{const go=()=>{const k=th.dataset.k;CSORT=CSORT.k===k?{k,d:-CSORT.d}:{k,d:-1};drawCot()};th.onclick=go;th.onkeydown=e=>{if(e.key==="Enter")go()}});
   document.getElementById("cotnote").textContent="Speculator (non-commercial) futures positions from the CFTC report dated "+T[0].date+". Net % change is the week-on-week change in the long share, in percentage points. These are futures contracts, not spot positions. Click a column heading to sort.";
+}
+let PXR="1M",PXOK=false;
+function loadPx(r){
+  if(r)PXR=r;else if(PXOK)return;
+  PXOK=true;
+  const ch=document.getElementById("pxchips");ch.innerHTML="";
+  [["1D","1 day"],["1M","1 month"],["3M","3 months"],["12M","1 year"]].forEach(([v,l])=>{const b=document.createElement("button");b.className="chip";b.textContent=l;b.setAttribute("aria-pressed",v===PXR);b.onclick=()=>loadPx(v);ch.appendChild(b)});
+  const g=document.getElementById("pxgrid");g.innerHTML="";
+  WATCH.forEach(w=>{
+    const sym=w.replace("/",""),box=document.createElement("div");box.className="pxc";
+    const wc=document.createElement("div");wc.className="tradingview-widget-container";
+    const inner=document.createElement("div");inner.className="tradingview-widget-container__widget";wc.appendChild(inner);
+    const s=document.createElement("script");
+    s.src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js";s.async=true;
+    s.text=JSON.stringify({symbol:"OANDA:"+sym,width:"100%",height:220,locale:"en",dateRange:PXR,colorTheme:"dark",isTransparent:false,autosize:false});
+    s.onerror=()=>{box.innerHTML="<p class='meta warn'>"+esc(w)+" chart couldn’t load. An ad blocker or network restriction may be blocking TradingView.</p>"};
+    wc.appendChild(s);box.appendChild(wc);
+    const cr=document.createElement("small");
+    cr.innerHTML="<a href='https://www.tradingview.com/symbols/"+sym+"/?exchange=OANDA' target='_blank' rel='noopener nofollow'>"+sym+" rate</a> by TradingView";
+    box.appendChild(cr);g.appendChild(box);
+  });
 }
 let CALIMP="1",CALOK=false;
 function loadCal(imp){
