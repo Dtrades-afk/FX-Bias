@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Macro Edge</title>
+<title>NorthStar FX</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 <style>
@@ -58,6 +58,7 @@ li{margin-bottom:6px}a{color:var(--hd)}
 .tr{display:flex;height:10px;border-radius:5px;overflow:hidden;min-width:150px;background:var(--line)}.tr b{display:block;height:100%}
 .tr+small,.pop+small{display:block;color:var(--mute);font-size:12px;margin-top:3px}.pop{height:10px;border-radius:5px;background:var(--line);min-width:110px;overflow:hidden}.pop b{display:block;height:100%;background:var(--hd)}
 .cb{display:grid;grid-template-columns:1fr 36px;gap:8px;align-items:center;min-width:150px}td.conf{color:var(--amber);font-weight:600}
+#cottable th,#cottable td{padding:7px 10px}#cottable th[data-k]{cursor:pointer;white-space:nowrap}#cottable .n{text-align:right;font-variant-numeric:tabular-nums}
 @media(max-width:420px){.mid2{grid-template-columns:90px 1fr}.sp{grid-column:1/-1}}
 .tabs{display:flex;gap:6px;overflow-x:auto;margin:0 0 16px;padding-bottom:4px}.tabs .chip{white-space:nowrap}
 .br{display:grid;grid-template-columns:44px 1fr 44px;gap:8px;align-items:center;margin-bottom:8px}
@@ -71,7 +72,7 @@ select{background:var(--card2);color:var(--ink);border:1px solid var(--line);bor
 <main>
 <header class="hd">
 <div class="brand"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 2l4 14 14 4-14 4-4 14-4-14L2 20l14-4z" fill="#4194FF"/><path d="M20 8l2 10 10 2-10 2-2 10-2-10-10-2 10-2z" fill="#7DB8FF"/></svg>
-<div><h1>Macro Edge</h1><div class="sub">Fundamental &amp; Sentiment Intelligence</div></div></div>
+<div><h1>NorthStar FX</h1><div class="sub">Fundamental &amp; Sentiment Intelligence</div></div></div>
 <nav class="tabs" id="tabs" aria-label="Sections"></nav>
 <p class="meta" id="meta">Loading the latest data…</p>
 </header>
@@ -87,7 +88,10 @@ select{background:var(--card2);color:var(--ink);border:1px solid var(--line);bor
 <section data-tab="markets"><h2>Currencies and metals</h2>
 <div class="scroll"><table><thead><tr><th>Name</th><th>Score</th><th>Rates</th><th>Inflation</th><th>2y yield trend</th><th>COT</th><th>News</th><th>Risk tone</th></tr></thead><tbody id="cur"></tbody></table></div>
 <p class="meta">Inputs: +1 supportive, 0 flat, −1 negative, a dash means no data.</p></section>
+<section data-tab="news"><h2>Economic calendar</h2><div class="chips" id="calchips"></div><div id="cal" style="min-height:420px"></div>
+<p class="meta"><a href="https://www.tradingview.com/economic-calendar/" target="_blank" rel="noopener">Economic calendar by TradingView</a>. A third-party widget: its data and look come from TradingView. It covers the US, euro area, UK, Japan, Australia, New Zealand, Canada and Switzerland.</p></section>
 <section data-tab="news"><h2>Headlines</h2><ul id="news"></ul></section>
+<section data-tab="markets"><h2>COT report</h2><div class="scroll" id="cottable"></div><p class="meta" id="cotnote"></p></section>
 <section data-tab="markets"><h2>Retail positioning</h2><div class="chips"><button class="chip" id="rtoggle"></button></div><div class="scroll" id="retail"></div>
 <p class="meta">Open positions from traders connected to Myfxbook only, so the sample is biased. Shown for context and not part of the bias score. Source: Myfxbook Community Outlook, refreshed about every 20 minutes.</p></section>
 <section data-tab="markets"><h2>Scorecard</h2>
@@ -156,7 +160,7 @@ function render(){
   document.getElementById("pairs").innerHTML=rows.length?rows.map(p=>"<tr><td>"+p.pair+"</td><td style='color:"+COL[p.level]+"'><b>"+p.level+"</b></td><td>"+sg(p.gap)+"</td></tr>").join(""):"<tr><td colspan='3'>No pairs at this level right now.</td></tr>";
   document.getElementById("cur").innerHTML=Object.entries(D.currencies).sort((a,b)=>b[1].score-a[1].score).map(([c,v])=>"<tr><td>"+c+"</td><td><b>"+v.score+"</b></td><td>"+f(v.comps.rates)+"</td><td>"+f(v.comps.infl)+"</td><td>"+f(v.comps.yld)+(v.yield2y!=null?" ("+v.yield2y.toFixed(2)+"%)":"")+"</td><td>"+f(v.comps.cot)+(v.cotPct!=null?" (pct "+v.cotPct+")":"")+"</td><td>"+f(v.comps.news)+"</td><td>"+f(v.comps.risk)+"</td></tr>").join("");
   document.getElementById("news").innerHTML=D.headlines.length?D.headlines.map(h=>"<li>"+(h.c?"<b>"+h.c+" "+sg(h.s)+"</b> ":"")+(h.url?"<a href='"+encodeURI(h.url)+"' target='_blank' rel='noopener'>"+esc(h.headline)+"</a>":esc(h.headline))+" <span class='meta'>"+esc(h.source||"")+"</span></li>").join(""):"<li class='meta'>No headlines loaded. Add the news keys to enable them.</li>";
-  document.getElementById("legend").innerHTML=Object.entries(COL).map(([k,v])=>"<span><i style='background:"+v+"'></i>"+k+"</span>").join("")+"<span>Bias is based on macro data, positioning and news inputs. For informational purposes only.</span>";drawStrip();drawRetail();drawCharts();
+  document.getElementById("legend").innerHTML=Object.entries(COL).map(([k,v])=>"<span><i style='background:"+v+"'></i>"+k+"</span>").join("")+"<span>Bias is based on macro data, positioning and news inputs. For informational purposes only.</span>";drawStrip();drawRetail();drawCot();drawCharts();
 }
 const LOGKEY="fxbias-log-v1",H=5,APIS=["https://api.frankfurter.dev/v1","https://api.frankfurter.app"];
 function getLog(){try{return JSON.parse(localStorage.getItem(LOGKEY))||[]}catch(e){return[]}}
@@ -211,6 +215,7 @@ function showTab(t){
   document.querySelectorAll("[data-tab]").forEach(e=>e.hidden=e.dataset.tab!==t);
   const n=document.getElementById("tabs");n.innerHTML="";
   TABS.forEach(([k,l])=>{const b=document.createElement("button");b.className="chip";b.textContent=l;b.setAttribute("aria-pressed",k===t);b.onclick=()=>showTab(k);n.appendChild(b)});
+  if(t==="news")loadCal();
 }
 function drawCharts(){
   if(!D)return;
@@ -308,6 +313,46 @@ function drawSent(){
     return "<tr><td><b>"+esc(NAMES[p.pair]||p.pair)+"</b></td><td>"+cbar(s.f)+"</td><td>"+cbar(s.s)+"</td><td class='"+(rd==="Conflict"?"conf":"")+"'>"+rd+"</td><td style='color:"+COL[p.level]+"'><b>"+esc(p.level)+"</b></td></tr>";
   }).join("");
   document.getElementById("sfboard").innerHTML="<table><thead><tr><th>Market</th><th>Fundamentals</th><th>Sentiment</th><th>Reading</th><th>Overall bias</th></tr></thead><tbody>"+rows+"</tbody></table>";
+}
+let CSORT={k:"netPctChg",d:-1};
+function drawCot(){
+  const el=document.getElementById("cottable"),T=D.cotTable;
+  if(!T||!T.length){el.innerHTML="<p class='meta warn'>COT data didn’t load: "+esc(D.status&&D.status.cot&&D.status.cot!=="ok"?D.status.cot:"the server isn’t returning the COT table, so check that api/bias.js is the latest version")+"</p>";return}
+  const ok=v=>v!=null&&Number.isFinite(v),fmt=v=>ok(v)?Math.round(v).toLocaleString():"–",sgn=v=>ok(v)?(v>0?"+":"")+Math.round(v).toLocaleString():"–",kf=v=>ok(v)?(v>=1000?Math.round(v/1000)+"K":Math.round(v)):"–";
+  const mx=k=>Math.max(...T.map(x=>ok(x[k])?Math.abs(x[k]):0),1),M={long:mx("long"),short:mx("short"),net:mx("net"),oi:mx("oi"),dOi:mx("dOi"),dLong:mx("dLong"),dShort:mx("dShort"),np:mx("netPctChg")};
+  const bl=a=>"background:rgba(65,148,255,"+Math.min(.6,Math.max(0,a)).toFixed(2)+")",rd=a=>"background:rgba(240,68,93,"+Math.min(.6,Math.max(0,a)).toFixed(2)+")";
+  const sg2=(v,m,up)=>!ok(v)||!v?"":((v>0)===up?bl:rd)(Math.abs(v)/m*.6);
+  const C=[["sym","Symbol"],
+    ["long","Long contracts",x=>fmt(x.long),x=>bl(x.long/M.long*.6)],
+    ["short","Short contracts",x=>fmt(x.short),x=>rd(x.short/M.short*.6)],
+    ["dLong","Δ Long",x=>sgn(x.dLong),x=>sg2(x.dLong,M.dLong,true)],
+    ["dShort","Δ Short",x=>sgn(x.dShort),x=>sg2(x.dShort,M.dShort,false)],
+    ["longPct","Long %",x=>x.longPct.toFixed(2)+"%",x=>(x.longPct>=50?bl:rd)(Math.abs(x.longPct-50)/50*.6)],
+    ["shortPct","Short %",x=>x.shortPct.toFixed(2)+"%",x=>(x.shortPct>=50?rd:bl)(Math.abs(x.shortPct-50)/50*.6)],
+    ["netPctChg","Net % change",x=>(x.netPctChg>0?"+":"")+x.netPctChg.toFixed(2)+"%",x=>sg2(x.netPctChg,M.np,true)],
+    ["net","Net position",x=>sgn(x.net),x=>sg2(x.net,M.net,true)],
+    ["oi","Open interest",x=>kf(x.oi),x=>ok(x.oi)?bl(x.oi/M.oi*.5):""],
+    ["dOi","Δ Open interest",x=>sgn(x.dOi),x=>sg2(x.dOi,M.dOi,true)]];
+  const rows=T.slice().sort((a,b)=>CSORT.k==="sym"?CSORT.d*a.sym.localeCompare(b.sym):CSORT.d*((a[CSORT.k]||0)-(b[CSORT.k]||0)));
+  el.innerHTML="<table><thead><tr>"+C.map(c=>"<th class='"+(c[0]==="sym"?"":"n")+"' data-k='"+c[0]+"' tabindex='0' aria-sort='"+(CSORT.k===c[0]?(CSORT.d<0?"descending":"ascending"):"none")+"'>"+c[1]+(CSORT.k===c[0]?(CSORT.d<0?" ▼":" ▲"):"")+"</th>").join("")+"</tr></thead><tbody>"+
+    rows.map(x=>"<tr>"+C.map(c=>c[0]==="sym"?"<td><b>"+esc(x.sym)+"</b></td>":"<td class='n' style='"+c[3](x)+"'>"+c[2](x)+"</td>").join("")+"</tr>").join("")+"</tbody></table>";
+  el.querySelectorAll("th[data-k]").forEach(th=>{const go=()=>{const k=th.dataset.k;CSORT=CSORT.k===k?{k,d:-CSORT.d}:{k,d:-1};drawCot()};th.onclick=go;th.onkeydown=e=>{if(e.key==="Enter")go()}});
+  document.getElementById("cotnote").textContent="Speculator (non-commercial) futures positions from the CFTC report dated "+T[0].date+". Net % change is the week-on-week change in the long share, in percentage points. These are futures contracts, not spot positions. Click a column heading to sort.";
+}
+let CALIMP="1",CALOK=false;
+function loadCal(imp){
+  if(imp)CALIMP=imp;else if(CALOK)return;
+  CALOK=true;
+  const ch=document.getElementById("calchips");ch.innerHTML="";
+  [["1","High impact only"],["0,1","Medium and high"]].forEach(([v,l])=>{const b=document.createElement("button");b.className="chip";b.textContent=l;b.setAttribute("aria-pressed",v===CALIMP);b.onclick=()=>loadCal(v);ch.appendChild(b)});
+  const box=document.getElementById("cal");box.innerHTML="";
+  const w=document.createElement("div");w.className="tradingview-widget-container";
+  const inner=document.createElement("div");inner.className="tradingview-widget-container__widget";w.appendChild(inner);
+  const s=document.createElement("script");
+  s.src="https://s3.tradingview.com/external-embedding/embed-widget-events.js";s.async=true;
+  s.text=JSON.stringify({colorTheme:"dark",isTransparent:true,locale:"en",width:"100%",height:520,importanceFilter:CALIMP,countryFilter:"us,eu,gb,jp,au,nz,ca,ch"});
+  s.onerror=()=>{box.innerHTML="<p class='meta warn'>The calendar couldn’t load. An ad blocker or a network restriction may be blocking TradingView.</p>"};
+  w.appendChild(s);box.appendChild(w);
 }
 let RALL=false;
 function drawRetail(){
