@@ -350,7 +350,7 @@ function loadCal(imp){
   const inner=document.createElement("div");inner.className="tradingview-widget-container__widget";w.appendChild(inner);
   const s=document.createElement("script");
   s.src="https://s3.tradingview.com/external-embedding/embed-widget-events.js";s.async=true;
-  s.text=JSON.stringify({colorTheme:"dark",isTransparent:true,locale:"en",width:"100%",height:520,importanceFilter:CALIMP,countryFilter:"us,eu,gb,jp,au,nz,ca,ch"});
+  s.text=JSON.stringify({colorTheme:"dark",isTransparent:false,locale:"en",width:"100%",height:520,importanceFilter:CALIMP,countryFilter:"us,eu,gb,jp,au,nz,ca,ch"});
   s.onerror=()=>{box.innerHTML="<p class='meta warn'>The calendar couldn’t load. An ad blocker or a network restriction may be blocking TradingView.</p>"};
   w.appendChild(s);box.appendChild(w);
 }
