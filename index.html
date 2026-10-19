@@ -67,36 +67,48 @@ li{margin-bottom:6px}a{color:var(--hd)}
 .bar .mid,.bar .mk{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--mute)}.bar .mid{left:50%}
 select{background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:3px 8px;font:inherit;margin-left:8px}
 :focus-visible{outline:2px solid var(--hd);outline-offset:2px}
+
+.shell{display:flex;min-height:100vh}
+.side{width:250px;flex:none;background:var(--card2);border-right:1px solid var(--line);padding:18px 12px;position:sticky;top:0;height:100vh;overflow-y:auto}
+.side .brand{padding:0 8px 16px;border-bottom:1px solid var(--line);margin-bottom:6px}.side .brand h1{font-size:17px}
+.ng{margin:16px 8px 4px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+.ni{display:block;width:100%;text-align:left;background:none;border:0;color:var(--ink);font:inherit;padding:8px 10px;border-radius:8px;cursor:pointer}
+.ni:hover{background:rgba(65,148,255,.1)}.ni[aria-current=page]{background:rgba(65,148,255,.18);color:var(--hd);font-weight:600}
+.shell>main{flex:1;min-width:0;margin:0;max-width:1280px;width:100%}
+.bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:18px}
+.bar h2{margin:0;font-size:22px}.bar .meta{margin:0 0 0 auto}
+.menu{display:none;background:none;border:1px solid var(--line);color:var(--ink);border-radius:8px;font-size:18px;padding:4px 10px;cursor:pointer}
+.scrim{display:none}
+@media(max-width:860px){.side{position:fixed;left:0;top:0;bottom:0;z-index:30;transform:translateX(-100%);transition:transform .2s}.side.open{transform:none}.scrim.open{display:block;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:20}.menu{display:inline-block}.bar .meta{margin-left:0;width:100%}}
 </style>
 </head>
 <body>
+<div class="shell">
+<aside class="side" id="side"><div class="brand"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 2l4 14 14 4-14 4-4 14-4-14L2 20l14-4z" fill="#4194FF"/><path d="M20 8l2 10 10 2-10 2-2 10-2-10-10-2 10-2z" fill="#7DB8FF"/></svg><div><h1>Macro Edge</h1><div class="sub">Fundamental &amp; Sentiment Intelligence</div></div></div>
+<nav id="nav" aria-label="Sections"></nav></aside>
+<div class="scrim" id="scrim"></div>
 <main>
-<header class="hd">
-<div class="brand"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 2l4 14 14 4-14 4-4 14-4-14L2 20l14-4z" fill="#4194FF"/><path d="M20 8l2 10 10 2-10 2-2 10-2-10-10-2 10-2z" fill="#7DB8FF"/></svg>
-<div><h1>Macro Edge</h1><div class="sub">Fundamental &amp; Sentiment Intelligence</div></div></div>
-<nav class="tabs" id="tabs" aria-label="Sections"></nav>
-<p class="meta" id="meta">Loading the latest data…</p>
-</header>
+<div class="bar"><button class="menu" id="menu" aria-label="Open menu" aria-expanded="false">☰</button><h2 id="ptitle"></h2><p class="meta" id="meta">Loading the latest data…</p></div>
 <div class="strip" id="strip" data-tab="overview"></div>
 <div class="cards" id="cards" data-tab="overview"></div>
-<section data-tab="charts"><h2>Price charts</h2><div class="chips" id="pxchips"></div><div class="pxgrid" id="pxgrid"></div></section>
-<section data-tab="charts" class="plain"><h2>Market sentiment</h2><div class="sgrid" id="sent"></div></section>
-<section data-tab="charts"><h2>Fundamentals vs sentiment</h2><div class="scroll" id="sfboard"></div><p class="meta">Each bar is the gap between the two currencies on a −100 to +100 scale. Fundamentals combine rates, inflation and 2-year yields. Sentiment combines positioning, risk tone and news. Conflict means the two point in opposite directions.</p></section>
-<section data-tab="charts"><h2>Currency strength</h2><div id="strength"></div><p class="meta">Score from −100 (weak) to +100 (strong).</p></section>
-<section data-tab="charts"><h2>COT positioning (52-week percentile)</h2><div id="cotbars"></div><p class="meta">The marks at 10 and 90 show crowded zones. Amber bars are crowded.</p></section>
-<section data-tab="charts"><h2>Gap history <select id="hp" aria-label="Pair"></select></h2><div id="hist"></div><p class="meta">Built from the readings saved in this browser. Dashed lines are the ±25 and ±50 bias thresholds.</p></section>
-<section data-tab="markets"><h2>All markets</h2><div class="chips" id="filters"></div>
+<section data-tab="px"><h2>Price charts</h2><div class="chips" id="pxchips"></div><div class="pxgrid" id="pxgrid"></div></section>
+<section data-tab="sentiment" class="plain"><h2>Market sentiment</h2><div class="sgrid" id="sent"></div></section>
+<section data-tab="board"><h2>Fundamentals vs sentiment</h2><div class="scroll" id="sfboard"></div><p class="meta">Each bar is the gap between the two currencies on a −100 to +100 scale. Fundamentals combine rates, inflation and 2-year yields. Sentiment combines positioning, risk tone and news. Conflict means the two point in opposite directions.</p></section>
+<section data-tab="strength"><h2>Currency strength</h2><div id="strength"></div><p class="meta">Score from −100 (weak) to +100 (strong).</p></section>
+<section data-tab="cotpct"><h2>COT positioning (52-week percentile)</h2><div id="cotbars"></div><p class="meta">The marks at 10 and 90 show crowded zones. Amber bars are crowded.</p></section>
+<section data-tab="history"><h2>Gap history <select id="hp" aria-label="Pair"></select></h2><div id="hist"></div><p class="meta">Built from the readings saved in this browser. Dashed lines are the ±25 and ±50 bias thresholds.</p></section>
+<section data-tab="allmarkets"><h2>All markets</h2><div class="chips" id="filters"></div>
 <div class="scroll"><table><thead><tr><th>Pair</th><th>Bias</th><th>Gap</th></tr></thead><tbody id="pairs"></tbody></table></div></section>
-<section data-tab="markets"><h2>Currencies and metals</h2>
+<section data-tab="currencies"><h2>Currencies and metals</h2>
 <div class="scroll"><table><thead><tr><th>Name</th><th>Score</th><th>Rates</th><th>Inflation</th><th>2y yield trend</th><th>COT</th><th>News</th><th>Risk tone</th></tr></thead><tbody id="cur"></tbody></table></div>
 <p class="meta">Inputs: +1 supportive, 0 flat, −1 negative, a dash means no data.</p></section>
-<section data-tab="news"><h2>Economic calendar</h2><div class="chips" id="calchips"></div><div id="cal" style="min-height:420px"></div>
+<section data-tab="calendar"><h2>Economic calendar</h2><div class="chips" id="calchips"></div><div id="cal" style="min-height:420px"></div>
 <p class="meta"><a href="https://www.tradingview.com/economic-calendar/" target="_blank" rel="noopener">Economic calendar by TradingView</a>. A third-party widget: its data and look come from TradingView. It covers the US, euro area, UK, Japan, Australia, New Zealand, Canada and Switzerland.</p></section>
-<section data-tab="news"><h2>Headlines</h2><ul id="news"></ul></section>
-<section data-tab="markets"><h2>COT report</h2><div class="scroll" id="cottable"></div><p class="meta" id="cotnote"></p></section>
-<section data-tab="markets"><h2>Retail positioning</h2><div class="chips"><button class="chip" id="rtoggle"></button></div><div class="scroll" id="retail"></div>
+<section data-tab="headlines"><h2>Headlines</h2><ul id="news"></ul></section>
+<section data-tab="cot"><h2>COT report</h2><div class="scroll" id="cottable"></div><p class="meta" id="cotnote"></p></section>
+<section data-tab="retail"><h2>Retail positioning</h2><div class="chips"><button class="chip" id="rtoggle"></button></div><div class="scroll" id="retail"></div>
 <p class="meta">Open positions from traders connected to Myfxbook only, so the sample is biased. Shown for context and not part of the bias score. Source: Myfxbook Community Outlook, refreshed about every 20 minutes.</p></section>
-<section data-tab="markets"><h2>Scorecard</h2>
+<section data-tab="score"><h2>Scorecard</h2>
 <p class="meta">How past readings compared with what price did over the next 5 trading days. Each day you open the site, its readings are saved in this browser.</p>
 <div id="score"><p class="meta">Checking saved readings…</p></div>
 <button class="chip" onclick="exportLog()">Download log (CSV)</button>
@@ -107,9 +119,10 @@ select{background:var(--card2);color:var(--ink);border:1px solid var(--line);bor
 <li><b>Sentiment:</b> speculative positioning from the weekly CFTC COT report (halved when positioning is crowded), market risk tone from the VIX and S&amp;P 500, and AI-scored news headlines when the news keys are set.</li></ul>
 <p>A pair’s bias is the base score minus the quote score, halved. Gaps of +25 and +50 or more read Bullish and Very bullish, −25 and −50 or less read Bearish and Very bearish, and anything between is Neutral. Gold and silver use positioning only, damped, against the dollar’s score.</p>
 <p>Data comes from FRED, the CFTC, the ECB, the Bank of Canada, Finnhub and Myfxbook (retail positioning, shown for context and not scored), and refreshes when you open the site. Macro data lags by weeks and COT by days. The 7D trend lines and the scorecard come from readings saved in your browser. This is a decision aid and not financial advice.</p></section>
-<section class="legend" id="legend"></section>
+<section class="legend" id="legend" data-tab="overview"></section>
 <p class="meta" id="status"></p>
 </main>
+</div>
 <script>
 // Edit this list to change which pairs appear as cards at the top.
 const WATCH=["XAU/USD","XAG/USD","EUR/USD","GBP/USD","GBP/JPY","EUR/GBP"];
@@ -208,18 +221,26 @@ function exportLog(){
   const csv="date,pair,level,gap\n"+getLog().map(x=>[x.d,x.p,x.l,x.g].join(",")).join("\n");
   const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="fx-bias-log.csv";a.click();
 }
-const TABS=[["overview","Overview"],["markets","Markets"],["charts","Charts"],["news","News"],["methodology","Methodology"]];
+const NAV=[["Dashboard",[["overview","Overview"]]],["Markets",[["allmarkets","All markets"],["currencies","Currencies and metals"],["score","Scorecard"]]],["Positioning",[["cot","COT report"],["retail","Retail positioning"],["cotpct","COT percentiles"]]],["Sentiment",[["sentiment","Market sentiment"],["board","Fundamentals vs sentiment"]]],["Charts",[["px","Price charts"],["strength","Currency strength"],["history","Gap history"]]],["News",[["calendar","Economic calendar"],["headlines","Headlines"]]],["About",[["methodology","Methodology"]]]];
+const PAGES=NAV.flatMap(g=>g[1]);
 let TAB=(location.hash||"#overview").slice(1),HP="EUR/USD";
+function closeMenu(){document.getElementById("side").classList.remove("open");document.getElementById("scrim").classList.remove("open");document.getElementById("menu").setAttribute("aria-expanded","false")}
 function showTab(t){
-  if(!TABS.some(x=>x[0]===t))t="home";
+  if(!PAGES.some(x=>x[0]===t))t="overview";
   TAB=t;
   try{history.replaceState(null,"",location.pathname+location.search+"#"+t)}catch(e){}
   document.querySelectorAll("[data-tab]").forEach(e=>e.hidden=e.dataset.tab!==t);
-  const n=document.getElementById("tabs");n.innerHTML="";
-  TABS.forEach(([k,l])=>{const b=document.createElement("button");b.className="chip";b.textContent=l;b.setAttribute("aria-pressed",k===t);b.onclick=()=>showTab(k);n.appendChild(b)});
-  if(t==="news")loadCal();
-  if(t==="charts")loadPx();
+  document.getElementById("ptitle").textContent=PAGES.find(x=>x[0]===t)[1];
+  const n=document.getElementById("nav");n.innerHTML="";
+  NAV.forEach(([g,items])=>{
+    const h=document.createElement("div");h.className="ng";h.textContent=g;n.appendChild(h);
+    items.forEach(([k,l])=>{const b=document.createElement("button");b.className="ni";b.textContent=l;if(k===t)b.setAttribute("aria-current","page");b.onclick=()=>{showTab(k);closeMenu();window.scrollTo(0,0)};n.appendChild(b)});
+  });
+  if(t==="calendar")loadCal();
+  if(t==="px")loadPx();
 }
+document.getElementById("menu").onclick=()=>{const o=document.getElementById("side").classList.toggle("open");document.getElementById("scrim").classList.toggle("open",o);document.getElementById("menu").setAttribute("aria-expanded",String(o))};
+document.getElementById("scrim").onclick=closeMenu;
 function drawCharts(){
   if(!D)return;
   drawSent();
