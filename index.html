@@ -121,7 +121,7 @@ async function load(){
   try{
     const r=await fetch("/api/bias"+location.search);
     if(!r.ok)throw new Error(r.status===401?"This site needs an access key. Add ?key=YOUR_KEY to the address.":"The server returned "+r.status);
-    D=await r.json();render();logReadings();drawCards();drawCharts();scorecard();
+    D=await r.json();LAST=Date.now();render();logReadings();drawCards();drawCharts();scorecard();
   }catch(e){document.getElementById("meta").innerHTML="<span class='warn'>Couldn’t load data: "+esc(e.message)+"</span>"}
 }
 function why(p){
@@ -151,7 +151,7 @@ function card(p){
 }
 function render(){
   const bad=Object.entries(D.status).filter(([,v])=>v!=="ok");
-  document.getElementById("meta").innerHTML="Updated "+new Date(D.updated).toLocaleString();
+  document.getElementById("meta").innerHTML="Updated "+new Date(D.updated).toLocaleString()+" · refreshes every 30 min while open";
   document.getElementById("status").innerHTML=bad.length?"<span class='warn'>Missing inputs: "+bad.map(([k,v])=>esc(k+" ("+v+")")).join("; ")+". Scores use the inputs that did load.</span>":"";
   drawCards();
   const fl=document.getElementById("filters");fl.innerHTML="";
@@ -368,6 +368,10 @@ function drawRetail(){
   }).join("");
   el.innerHTML=rows?"<table><thead><tr><th>Symbol</th><th>Community trend (short vs long)</th><th>Popularity</th><th>Avg short price</th><th>Avg long price</th><th>Positions (S / L)</th><th>Lots (S / L)</th></tr></thead><tbody>"+rows+"</tbody></table>":"<p class='meta'>None of your watchlist symbols were returned. Try Show all symbols.</p>";
 }
+let LAST=0;
+const EVERY=30*60*1000;
+setInterval(()=>{if(!document.hidden)load()},EVERY);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&LAST&&Date.now()-LAST>EVERY)load()});
 showTab(TAB);
 load();
 </script>
