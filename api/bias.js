@@ -49,7 +49,7 @@ const cot = () => cached("cot", TTL.cot, async () => {
   const p = new URLSearchParams({ "$where": `cftc_contract_market_code in(${codes})`, "$order": "report_date_as_yyyy_mm_dd DESC", "$limit": "700" });
   const rows = await getJson("https://publicreporting.cftc.gov/resource/6dca-aqww.json?" + p);
   const out = {};
-  const pct = {};
+  const pct = {}, table = [];
   for (const c of Object.keys(COT)) {
     const r = rows.filter(x => x.cftc_contract_market_code === COT[c]).slice(0, 52);
     if (r.length < 2) { out[c] = null; pct[c] = null; continue; }
@@ -60,8 +60,17 @@ const cot = () => cached("cot", TTL.cot, async () => {
     // Crowded positioning (top or bottom 10% of the past year) halves a signal that adds to the crowd.
     const crowded = pct[c] !== null && ((chg > 0 && pc >= 90) || (chg < 0 && pc <= 10));
     out[c] = crowded ? chg * 0.5 : chg;
+    // Table row: week-on-week changes come from the two latest reports. Net % change is the change in the long share, in percentage points.
+    const L0 = +r[0].noncomm_positions_long_all, S0 = +r[0].noncomm_positions_short_all;
+    const L1 = +r[1].noncomm_positions_long_all, S1 = +r[1].noncomm_positions_short_all;
+    const lp0 = (L0 / (L0 + S0)) * 100, lp1 = (L1 / (L1 + S1)) * 100;
+    table.push({
+      sym: c === "XAU" ? "Gold" : c === "XAG" ? "Silver" : c, date: r[0].report_date_as_yyyy_mm_dd,
+      long: L0, short: S0, dLong: L0 - L1, dShort: S0 - S1, longPct: lp0, shortPct: 100 - lp0, netPctChg: lp0 - lp1,
+      net: L0 - S0, oi: +r[0].open_interest_all, dOi: +r[0].open_interest_all - +r[1].open_interest_all
+    });
   }
-  return { vals: out, pct };
+  return { vals: out, pct, table };
 });
 
 const news = () => cached("news", TTL.news, async () => {
@@ -151,7 +160,7 @@ const risk = () => cached("risk", TTL.macro, async () => {
 // Retail positioning from the Myfxbook API (needs a free Myfxbook account). Display only, not part of the bias score.
 // Cached for 20 minutes because Myfxbook limits how often the outlook can be requested.
 const outlook = () => cached("outlook", 20 * 6e4, async () => {
-  const em = process.env.MYFXBOOK_EMAIL, pw = process.env.MYFXBOOK_PASSWORD;
+  const em = (process.env.MYFXBOOK_EMAIL || "").trim(), pw = (process.env.MYFXBOOK_PASSWORD || "").trim();
   if (!em || !pw) throw new Error("MYFXBOOK_EMAIL or MYFXBOOK_PASSWORD not set");
   const base = "https://www.myfxbook.com/api/";
   const l = await getJson(`${base}login.json?email=${encodeURIComponent(em)}&password=${encodeURIComponent(pw)}`);
@@ -208,5 +217,5 @@ module.exports = async (req, res) => {
     return { pair: p, gap, level: level(gap) };
   });
   res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate=600");
-  res.status(200).json({ updated: new Date().toISOString(), status, risk: r.error ? null : r, retail: rt.error ? null : { symbols: rt }, currencies, pairs, headlines: n.error ? [] : n.items });
+  res.status(200).json({ updated: new Date().toISOString(), status, risk: r.error ? null : r, retail: rt.error ? null : { symbols: rt }, cotTable: c.error ? null : c.table, currencies, pairs, headlines: n.error ? [] : n.items });
 };
