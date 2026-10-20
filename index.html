@@ -58,7 +58,7 @@ li{margin-bottom:6px}a{color:var(--hd)}
 .tr{display:flex;height:10px;border-radius:5px;overflow:hidden;min-width:150px;background:var(--line)}.tr b{display:block;height:100%}
 .tr+small,.pop+small{display:block;color:var(--mute);font-size:12px;margin-top:3px}.pop{height:10px;border-radius:5px;background:var(--line);min-width:110px;overflow:hidden}.pop b{display:block;height:100%;background:var(--hd)}
 .cb{display:grid;grid-template-columns:1fr 36px;gap:8px;align-items:center;min-width:150px}td.conf{color:var(--amber);font-weight:600}
-.pxgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}.pxc{min-height:240px}.pxc small{display:block;color:var(--mute);font-size:12px;margin-top:4px}.pxc small a{color:var(--mute)}
+.pxgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}.pxc{min-height:330px}.pxc small{display:block;color:var(--mute);font-size:12px;margin-top:4px}.pxc small a{color:var(--mute)}
 #cottable th,#cottable td{padding:7px 10px}#cottable th[data-k]{cursor:pointer;white-space:nowrap}#cottable .n{text-align:right;font-variant-numeric:tabular-nums}
 @media(max-width:420px){.mid2{grid-template-columns:90px 1fr}.sp{grid-column:1/-1}}
 .tabs{display:flex;gap:6px;overflow-x:auto;margin:0 0 16px;padding-bottom:4px}.tabs .chip{white-space:nowrap}
@@ -375,8 +375,8 @@ function loadPx(r){
     const wc=document.createElement("div");wc.className="tradingview-widget-container";
     const inner=document.createElement("div");inner.className="tradingview-widget-container__widget";wc.appendChild(inner);
     const s=document.createElement("script");
-    s.src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js";s.async=true;
-    s.text=JSON.stringify({symbol:"OANDA:"+sym,width:"100%",height:220,locale:"en",dateRange:PXR,colorTheme:"dark",isTransparent:false,autosize:false});
+    s.src="https://s3.tradingview.com/external-embedding/embed-widget-symbol-overview.js";s.async=true;
+    s.text=JSON.stringify({symbols:[[w,"OANDA:"+sym+"|"+PXR]],chartType:"candlesticks",width:"100%",height:300,locale:"en",colorTheme:"dark",isTransparent:false,autosize:false,showVolume:false,showMA:false,hideDateRanges:true,hideMarketStatus:true,hideSymbolLogo:true,dateRanges:["1d|15","1m|240","3m|1D","12m|1W"],upColor:"#4194FF",downColor:"#F0445D",borderUpColor:"#4194FF",borderDownColor:"#F0445D",wickUpColor:"#4194FF",wickDownColor:"#F0445D"});
     s.onerror=()=>{box.innerHTML="<p class='meta warn'>"+esc(w)+" chart couldn’t load. An ad blocker or network restriction may be blocking TradingView.</p>"};
     wc.appendChild(s);box.appendChild(wc);
     const cr=document.createElement("small");
