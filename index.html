@@ -120,7 +120,7 @@ select{background:var(--card2);color:var(--ink);border:1px solid var(--line);bor
 <p>A pair’s bias is the base score minus the quote score, halved. Gaps of +25 and +50 or more read Bullish and Very bullish, −25 and −50 or less read Bearish and Very bearish, and anything between is Neutral. Gold and silver use positioning only, damped, against the dollar’s score.</p>
 <p>Data comes from FRED, the CFTC, the ECB, the Bank of Canada, Finnhub and Myfxbook (retail positioning, shown for context and not scored), and refreshes when you open the site. Macro data lags by weeks and COT by days. The 7D trend lines and the scorecard come from readings saved in your browser. This is a decision aid and not financial advice.</p></section>
 <section class="legend" id="legend" data-tab="overview"></section>
-<p class="meta" id="status"></p>
+<p class="meta" id="status" data-tab="methodology"></p>
 </main>
 </div>
 <script>
@@ -311,7 +311,7 @@ function drawCards(){
 }
 function drawStrip(){
   const u=D.currencies.USD.score,us=u>=50?"Very strong":u>=25?"Strong":u<=-50?"Very weak":u<=-25?"Weak":"Neutral",rk=D.risk;
-  document.getElementById("strip").innerHTML="<div><small>Markets tracked</small><b>"+WATCH.length+"</b><span>Forex · Metals</span></div><div><small>USD strength</small><b>"+us+"</b><span>Score "+sg(u)+"</span></div><div><small>Risk sentiment</small><b>"+(rk?(rk.tone>0?"Risk-on":rk.tone<0?"Risk-off":"Mixed"):"Not loaded")+"</b><span>"+(rk?"VIX "+rk.vix.toFixed(1):"See the status line below")+"</span></div>";
+  document.getElementById("strip").innerHTML="<div><small>Markets tracked</small><b>"+WATCH.length+"</b><span>Forex · Metals</span></div><div><small>USD strength</small><b>"+us+"</b><span>Score "+sg(u)+"</span></div><div><small>Risk sentiment</small><b>"+(rk?(rk.tone>0?"Risk-on":rk.tone<0?"Risk-off":"Mixed"):"Not loaded")+"</b><span>"+(rk?"VIX "+rk.vix.toFixed(1):"Not available right now")+"</span></div>";
 }
 const riskLabel=t=>t>=1?["Strong risk-on","Very bullish"]:t>=0.5?["Risk-on","Bullish"]:t>-0.5?["Mixed","Neutral"]:t>-1?["Risk-off","Bearish"]:["Strong risk-off","Very bearish"];
 const isConf=s=>s.f!=null&&s.s!=null&&Math.abs(s.f)>=10&&Math.abs(s.s)>=10&&Math.sign(s.f)!==Math.sign(s.s);
@@ -327,7 +327,7 @@ function drawSent(){
     h+="<div class='card2'><div class='ch'><span class='ico'>VIX</span><div><b>Risk appetite</b><small>VIX and S&amp;P 500 trend</small></div><div class='sc'><small>Tone</small><b>"+sg(rk.tone)+"</b></div></div>"+
     "<div class='mid2'>"+gauge({gap:rk.tone*100,level:lv},c)+"<div class='lv' style='color:"+c+"'><b>"+esc(lb)+"</b><small>Market risk tone</small></div><div class='sp'><small>Today</small><b>VIX "+rk.vix.toFixed(1)+"</b></div></div>"+
     "<div class='kd'><h3>Key drivers</h3><div><i>◔</i><em>VIX</em><span>"+rk.vix.toFixed(1)+" ("+vl+"; below 16 is calm, above 24 stressed)</span></div><div><i>↗</i><em>S&amp;P 500</em><span>"+sg(+sp.toFixed(1))+"% vs its 50-day average</span></div><div><i>%</i><em>Effect</em><span>Risk-on helps AUD, NZD and CAD and hurts JPY and CHF (my assumption)</span></div></div></div>";
-  }else h+="<p class='meta'>Risk data not loaded. Check the status line at the bottom of the page.</p>";
+  }else h+="<p class='meta'>Risk data isn’t available right now.</p>";
   const all=Object.entries(D.currencies),have=all.some(([,v])=>v.cotPct!=null),ex=all.filter(([,v])=>v.cotPct!=null&&(v.cotPct>=90||v.cotPct<=10));
   h+="<div class='card2'><div class='ch'><span class='ico'>COT</span><div><b>Positioning extremes</b><small>Speculators, 52-week range</small></div></div><div class='kd'><h3>Crowded positions</h3>"+
   (!have?"<div><i>—</i><em>No data</em><span>No COT history loaded</span></div>":ex.length?ex.map(([c,v])=>"<div><i>"+(v.cotPct>=90?"▲":"▼")+"</i><em>"+c+"</em><span>"+(v.cotPct>=90?"Crowded long":"Crowded short")+" (52w pct "+v.cotPct+")</span></div>").join(""):"<div><i>—</i><em>None</em><span>Nothing is in the top or bottom 10% of its year</span></div>")+"</div></div>";
@@ -341,7 +341,7 @@ function drawSent(){
 let CSORT={k:"netPctChg",d:-1};
 function drawCot(){
   const el=document.getElementById("cottable"),T=D.cotTable;
-  if(!T||!T.length){el.innerHTML="<p class='meta warn'>COT data didn’t load: "+esc(D.status&&D.status.cot&&D.status.cot!=="ok"?D.status.cot:"the server isn’t returning the COT table, so check that api/bias.js is the latest version")+"</p>";return}
+  if(!T||!T.length){el.innerHTML="<p class='meta'>COT data isn’t available right now.</p>";return}
   const ok=v=>v!=null&&Number.isFinite(v),fmt=v=>ok(v)?Math.round(v).toLocaleString():"–",sgn=v=>ok(v)?(v>0?"+":"")+Math.round(v).toLocaleString():"–",kf=v=>ok(v)?(v>=1000?Math.round(v/1000)+"K":Math.round(v)):"–";
   const mx=k=>Math.max(...T.map(x=>ok(x[k])?Math.abs(x[k]):0),1),M={long:mx("long"),short:mx("short"),net:mx("net"),oi:mx("oi"),dOi:mx("dOi"),dLong:mx("dLong"),dShort:mx("dShort"),np:mx("netPctChg")};
   const bl=a=>"background:rgba(65,148,255,"+Math.min(.6,Math.max(0,a)).toFixed(2)+")",rd=a=>"background:rgba(240,68,93,"+Math.min(.6,Math.max(0,a)).toFixed(2)+")";
@@ -402,7 +402,7 @@ function loadCal(imp){
 let RALL=false;
 function drawRetail(){
   const el=document.getElementById("retail"),bt=document.getElementById("rtoggle"),R=D.retail&&D.retail.symbols;
-  if(!R||!R.length){bt.hidden=true;const why=D.status&&D.status.retail&&D.status.retail!=="ok"?D.status.retail:D.status&&D.status.retail==="ok"?"Myfxbook returned no symbols":"the server isn’t returning retail data, so check that api/bias.js is the latest version";el.innerHTML="<p class='meta warn'>Retail positioning didn’t load: "+esc(why)+"</p>";return}
+  if(!R||!R.length){bt.hidden=true;el.innerHTML="<p class='meta'>Retail positioning isn’t available right now.</p>";return}
   bt.hidden=false;bt.textContent=RALL?"Show watchlist only":"Show all symbols";bt.onclick=()=>{RALL=!RALL;drawRetail()};
   const tot=R.reduce((s,x)=>s+(x.total||0),0)||1,want=WATCH.map(w=>w.replace("/","")),n=v=>isFinite(v)?v:0;
   const px=v=>!isFinite(v)||!v?"–":v>=100?v.toFixed(2):v.toFixed(4);
