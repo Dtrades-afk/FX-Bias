@@ -120,6 +120,7 @@ select{background:var(--card2);color:var(--ink);border:1px solid var(--line);bor
 <p>A pair’s bias is the base score minus the quote score, halved. Gaps of +25 and +50 or more read Bullish and Very bullish, −25 and −50 or less read Bearish and Very bearish, and anything between is Neutral. Gold and silver use positioning only, damped, against the dollar’s score.</p>
 <p>Data comes from FRED, the CFTC, the ECB, the Bank of Canada, Finnhub and Myfxbook (retail positioning, shown for context and not scored), and refreshes when you open the site. Macro data lags by weeks and COT by days. The 7D trend lines and the scorecard come from readings saved in your browser. This is a decision aid and not financial advice.</p></section>
 <section class="legend" id="legend" data-tab="overview"></section>
+<p class="meta" id="updated" data-tab="methodology"></p>
 <p class="meta" id="status" data-tab="methodology"></p>
 </main>
 </div>
@@ -166,7 +167,7 @@ function card(p){
 }
 function render(){
   const bad=Object.entries(D.status).filter(([,v])=>v!=="ok");
-  document.getElementById("meta").innerHTML="Updated "+new Date(D.updated).toLocaleString()+" · refreshes every 30 min while open";
+  document.getElementById("meta").innerHTML="";document.getElementById("updated").innerHTML="Last updated "+esc(new Date(D.updated).toLocaleString())+" · refreshes every 30 minutes while the page is open";
   document.getElementById("status").innerHTML=bad.length?"<span class='warn'>Missing inputs: "+bad.map(([k,v])=>esc(k+" ("+v+")")).join("; ")+". Scores use the inputs that did load.</span>":"";
   drawCards();
   const fl=document.getElementById("filters");fl.innerHTML="";
