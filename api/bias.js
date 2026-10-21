@@ -1,4 +1,5 @@
 // Runs on Vercel as a serverless function. Needs Node 18+ (built-in fetch).
+// Runs on Vercel as a serverless function. Needs Node 18+ (built-in fetch).
 const { redis, INPUTS } = require("./_store");
 const CUR = ["USD", "EUR", "GBP", "JPY", "AUD", "NZD", "CAD", "CHF"];
 const PAIRS = "EUR/USD GBP/USD AUD/USD NZD/USD USD/JPY USD/CAD USD/CHF EUR/GBP EUR/JPY GBP/JPY AUD/JPY EUR/AUD EUR/CAD EUR/CHF EUR/NZD GBP/AUD GBP/CAD GBP/CHF GBP/NZD AUD/CAD AUD/CHF AUD/NZD NZD/CAD NZD/CHF NZD/JPY CAD/JPY CHF/JPY CAD/CHF XAU/USD XAG/USD".split(" ");
@@ -110,8 +111,55 @@ const news = () => cached("news", TTL.news, async () => {
 // 2-year government bond yields. Free daily sources are wired for USD, EUR and CAD only.
 // GBP, JPY, AUD, NZD and CHF have no source yet, so their yield input stays empty.
 // Verify these IDs on each provider's site before relying on them.
-const YLD = { USD: ["fred", "DGS2"], EUR: ["ecb", "B.U2.EUR.4F.G_N_A.SV_C_YM.SR_2Y"], CAD: ["boc", "BD.CDN.2YR.DQ.YLD"] };
+const YLD = {
+  USD: ["fred", "DGS2"], EUR: ["ecb", "B.U2.EUR.4F.G_N_A.SV_C_YM.SR_2Y"], CAD: ["boc", "BD.CDN.2YR.DQ.YLD"],
+  JPY: ["mof"], AUD: ["rba"], CHF: ["snb"] // official daily files; the layouts below are unverified, so a failure just leaves that currency empty
+};
+const YERR = {}; // last error per currency, shown in the status so a broken source is easy to spot
+const UA = { "User-Agent": "Mozilla/5.0 (compatible; MacroEdge/1.0)" };
+async function getText(url) {
+  const r = await fetch(url, { headers: UA });
+  if (!r.ok) throw new Error(url.split("?")[0] + " returned " + r.status);
+  return r.text();
+}
+const csvRows = (txt, sep = ",") => txt.split(/\r?\n/).map(l => l.split(sep).map(s => s.trim().replace(/^"|"$/g, "")));
+const oldestFirst = pairs => pairs.filter(p => p.k && !isNaN(p.v)).sort((a, b) => a.k - b.k).map(p => p.v);
+const dkey = s => { const m = String(s).match(/(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/); return m ? +m[1] * 10000 + +m[2] * 100 + +m[3] : 0; };
+
+// Japan: Ministry of Finance daily JGB yields (English CSV)
+async function jgb2y() {
+  let txt, last;
+  for (const u of ["https://www.mof.go.jp/english/policy/jgbs/reference/interest_rate/jgbcme.csv", "https://www.mof.go.jp/english/jgbs/reference/interest_rate/jgbcme.csv"]) {
+    try { txt = await getText(u); break; } catch (e) { last = e; }
+  }
+  if (!txt) throw last;
+  const rows = csvRows(txt), hi = rows.findIndex(r => /^date$/i.test(r[0]));
+  if (hi < 0) throw new Error("unexpected JGB file layout");
+  const col = rows[hi].findIndex(c => /^2\s*y?$/i.test(c));
+  if (col < 0) throw new Error("no 2-year column in the JGB file");
+  return oldestFirst(rows.slice(hi + 1).map(r => ({ k: dkey(r[0]), v: parseFloat(r[col]) })));
+}
+// Australia: RBA table F2, series FCMYGBAG2 (Australian Government 2-year bond)
+async function rba2y() {
+  const rows = csvRows(await getText("https://www.rba.gov.au/statistics/tables/csv/f2-data.csv"));
+  const si = rows.findIndex(r => /^series id$/i.test(r[0]));
+  if (si < 0) throw new Error("unexpected RBA file layout");
+  const col = rows[si].findIndex(c => c === "FCMYGBAG2");
+  if (col < 0) throw new Error("2-year series not found in the RBA file");
+  return oldestFirst(rows.slice(si + 1).filter(r => /^\d{1,2}-[A-Za-z]{3}-\d{4}$/.test(r[0]))
+    .map(r => ({ k: Date.parse(r[0].replace(/-/g, " ")) || 0, v: parseFloat(r[col]) })));
+}
+// Switzerland: SNB data portal, daily yields on Swiss Confederation bonds (2-year = code 2J)
+async function snb2y() {
+  const rows = csvRows(await getText("https://data.snb.ch/api/cube/rendoblid/data/csv/en"), ";");
+  const hi = rows.findIndex(r => r[0] === "Date" && r.length >= 3);
+  if (hi < 0) throw new Error("unexpected SNB file layout");
+  return oldestFirst(rows.slice(hi + 1).filter(r => r[1] === "2J").map(r => ({ k: dkey(r[0]), v: parseFloat(r[2]) })));
+}
 async function yieldSeries(src, id) { // returns values oldest to newest
+  if (src === "mof") return jgb2y();
+  if (src === "rba") return rba2y();
+  if (src === "snb") return snb2y();
   if (src === "fred") {
     const key = process.env.FRED_API_KEY;
     if (!key) throw new Error("FRED_API_KEY missing");
@@ -133,8 +181,9 @@ const yields = () => cached("yld", TTL.macro, async () => {
     if (!YLD[c]) continue;
     try {
       const v = await yieldSeries(...YLD[c]);
-      if (v.length > 20) out[c] = { last: v[v.length - 1], chg: v[v.length - 1] - v[v.length - 21] }; // change over about 4 weeks
-    } catch (e) { /* leave empty */ }
+      if (v.length > 20) { out[c] = { last: v[v.length - 1], chg: v[v.length - 1] - v[v.length - 21] }; delete YERR[c]; } // change over about 4 weeks
+      else YERR[c] = "only " + v.length + " data points found";
+    } catch (e) { YERR[c] = String(e.message || e).slice(0, 120); }
   }
   return out;
 });
@@ -237,6 +286,8 @@ module.exports = async (req, res) => {
   });
   if (!m.error && !c.error) await saveSnapshot(currencies, pairs); else saveNote = "skipped: macro or COT data did not load";
   status.storage = saveNote;
+  const yerr = Object.entries(YERR).map(([k, v]) => k + ": " + v).join("; ");
+  if (yerr) status.yieldErrors = yerr;
   res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate=600");
   res.status(200).json({ updated: new Date().toISOString(), status, risk: r.error ? null : r, retail: rt.error ? null : { symbols: rt }, cotTable: c.error ? null : c.table, currencies, pairs, headlines: n.error ? [] : n.items });
 };
