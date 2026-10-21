@@ -1,4 +1,5 @@
 // Runs on Vercel as a serverless function. Needs Node 18+ (built-in fetch).
+const { redis, INPUTS } = require("./_store");
 const CUR = ["USD", "EUR", "GBP", "JPY", "AUD", "NZD", "CAD", "CHF"];
 const PAIRS = "EUR/USD GBP/USD AUD/USD NZD/USD USD/JPY USD/CAD USD/CHF EUR/GBP EUR/JPY GBP/JPY AUD/JPY EUR/AUD EUR/CAD EUR/CHF EUR/NZD GBP/AUD GBP/CAD GBP/CHF GBP/NZD AUD/CAD AUD/CHF AUD/NZD NZD/CAD NZD/CHF NZD/JPY CAD/JPY CHF/JPY CAD/CHF XAU/USD XAG/USD".split(" ");
 const METALS = ["XAU", "XAG"];
@@ -181,6 +182,24 @@ const outlook = () => cached("outlook", 20 * 6e4, async () => {
   }
 });
 
+// Saves one snapshot per day (the first visit of the day) so the scorecard has a permanent, hindsight-free record.
+// If storage is not connected this quietly does nothing and the site works as before.
+let savedDay = "", saveNote = "not attempted yet";
+async function saveSnapshot(currencies, pairs) {
+  const day = new Date().toISOString().slice(0, 10);
+  if (savedDay === day) { saveNote = "ok"; return; }
+  try {
+    const cur = {};
+    for (const k in currencies) {
+      const v = currencies[k];
+      cur[k] = [v.score, ...INPUTS.map(i => (v.comps[i] === undefined ? null : v.comps[i]))];
+    }
+    await redis(["HSETNX", "snaps", day, JSON.stringify({ pairs: pairs.map(p => [p.pair, p.gap, p.level]), cur })]);
+    savedDay = day;
+    saveNote = "ok";
+  } catch (e) { saveNote = "could not save: " + String(e.message || e); }
+}
+
 const level = g => (g >= 50 ? "Very bullish" : g >= 25 ? "Bullish" : g <= -50 ? "Very bearish" : g <= -25 ? "Bearish" : "Neutral");
 
 module.exports = async (req, res) => {
@@ -216,6 +235,8 @@ module.exports = async (req, res) => {
     const gap = Math.round((currencies[b].score - currencies[q].score) / 2);
     return { pair: p, gap, level: level(gap) };
   });
+  if (!m.error && !c.error) await saveSnapshot(currencies, pairs); else saveNote = "skipped: macro or COT data did not load";
+  status.storage = saveNote;
   res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate=600");
   res.status(200).json({ updated: new Date().toISOString(), status, risk: r.error ? null : r, retail: rt.error ? null : { symbols: rt }, cotTable: c.error ? null : c.table, currencies, pairs, headlines: n.error ? [] : n.items });
 };
