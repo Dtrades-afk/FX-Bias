@@ -1,5 +1,4 @@
 // Runs on Vercel as a serverless function. Needs Node 18+ (built-in fetch).
-// Runs on Vercel as a serverless function. Needs Node 18+ (built-in fetch).
 const { redis, INPUTS } = require("./_store");
 const CUR = ["USD", "EUR", "GBP", "JPY", "AUD", "NZD", "CAD", "CHF"];
 const PAIRS = "EUR/USD GBP/USD AUD/USD NZD/USD USD/JPY USD/CAD USD/CHF EUR/GBP EUR/JPY GBP/JPY AUD/JPY EUR/AUD EUR/CAD EUR/CHF EUR/NZD GBP/AUD GBP/CAD GBP/CHF GBP/NZD AUD/CAD AUD/CHF AUD/NZD NZD/CAD NZD/CHF NZD/JPY CAD/JPY CHF/JPY CAD/CHF XAU/USD XAG/USD".split(" ");
