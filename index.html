@@ -79,6 +79,7 @@ select{background:var(--card2);color:var(--ink);border:1px solid var(--line);bor
 .bar h2{margin:0;font-size:22px}.bar .meta{margin:0 0 0 auto}
 .menu{display:none;background:none;border:1px solid var(--line);color:var(--ink);border-radius:8px;font-size:18px;padding:4px 10px;cursor:pointer}
 .scrim{display:none}
+.lv{width:130px;background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:4px 8px;font:inherit}
 @media(max-width:860px){.side{position:fixed;left:0;top:0;bottom:0;z-index:30;transform:translateX(-100%);transition:transform .2s}.side.open{transform:none}.scrim.open{display:block;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:20}.menu{display:inline-block}.bar .meta{margin-left:0;width:100%}}
 </style>
 </head>
@@ -100,7 +101,7 @@ select{background:var(--card2);color:var(--ink);border:1px solid var(--line);bor
 <section data-tab="allmarkets"><h2>All markets</h2><div class="chips" id="filters"></div>
 <div class="scroll"><table><thead><tr><th>Pair</th><th>Bias</th><th>Gap</th></tr></thead><tbody id="pairs"></tbody></table></div></section>
 <section data-tab="currencies"><h2>Currencies and metals</h2>
-<div class="scroll"><table><thead><tr><th>Name</th><th>Score</th><th>Rates</th><th>Inflation</th><th>2y yield trend</th><th>COT</th><th>News</th><th>Risk tone</th></tr></thead><tbody id="cur"></tbody></table></div>
+<div class="scroll"><table><thead><tr><th>Name</th><th>Score</th><th>Rates</th><th>Inflation</th><th>2y yield trend</th><th>COT</th><th>News</th><th>Risk tone</th><th>Stance</th><th>Jobs</th><th>Surprises</th></tr></thead><tbody id="cur"></tbody></table></div>
 <p class="meta">Inputs: +1 supportive, 0 flat, −1 negative, a dash means no data.</p></section>
 <section data-tab="calendar"><h2>Economic calendar</h2><div class="chips" id="calchips"></div><div id="cal" style="min-height:420px"></div>
 <p class="meta"><a href="https://www.tradingview.com/economic-calendar/" target="_blank" rel="noopener">Economic calendar by TradingView</a>. A third-party widget: its data and look come from TradingView. It covers the US, euro area, UK, Japan, Australia, New Zealand, Canada and Switzerland.</p></section>
@@ -111,14 +112,21 @@ select{background:var(--card2);color:var(--ink);border:1px solid var(--line);bor
 <section data-tab="score"><h2>Scorecard</h2>
 <p class="meta">How past readings compared with what price did over the next 5 trading days. Each day you open the site, its readings are saved in this browser.</p>
 <div id="score"><p class="meta">Checking saved readings…</p></div>
+<h3 style="font-size:15px;margin:18px 0 8px">Results by input</h3><div id="inputscore"><p class="meta">Results by input appear once history storage is connected and a few days of readings are saved.</p></div>
 <button class="chip" onclick="exportLog()">Download log (CSV)</button>
 <p class="meta">Prices are ECB daily reference rates from Frankfurter, not your broker’s prices. Gold and silver are logged but not checked, because no price source is connected for them. The log lives only in this browser, so it grows only on days you open the site on this device. Small samples can mislead.</p></section>
+<section data-tab="desk"><h2>Central bank stance and data surprises</h2>
+<p class="meta">Set these by hand and they feed the bias scores. Update the stance after each central bank meeting, and the surprises about weekly using the actual and forecast numbers on the Economic calendar page. Surprises stop counting after 14 days.</p>
+<div class="scroll" id="deskbox"></div><p class="meta" id="desknote"></p></section>
+<section data-tab="trend"><h2>Trend and key levels</h2>
+<div class="scroll" id="trendbox"><p class="meta">Loading prices…</p></div>
+<p class="meta">Trend compares the latest ECB daily reference rate with its 20 and 50 day averages (forex only: gold and silver have no price source here). Levels are saved on the server. Distances use the last ECB rate, not a live price. The trend is a check on the bias and is not part of the score.</p></section>
 <section data-tab="methodology" class="meth"><h2>Methodology</h2>
 <p>Each currency gets a score from −100 to +100, the average of the inputs that loaded. Every input counts as +1, 0 or −1 (equal weights, untested):</p>
-<ul><li><b>Fundamentals:</b> policy-rate trend, inflation trend and 2-year government yield trend (yields currently cover USD, EUR and CAD only).</li>
+<ul><li><b>Fundamentals:</b> policy-rate trend, inflation trend, 2-year yield trend (USD, EUR, CAD, JPY, AUD and CHF where the source loads), jobs trend (change in the unemployment rate), plus two inputs you set by hand: central bank stance and data surprises.</li>
 <li><b>Sentiment:</b> speculative positioning from the weekly CFTC COT report (halved when positioning is crowded), market risk tone from the VIX and S&amp;P 500, and AI-scored news headlines when the news keys are set.</li></ul>
 <p>A pair’s bias is the base score minus the quote score, halved. Gaps of +25 and +50 or more read Bullish and Very bullish, −25 and −50 or less read Bearish and Very bearish, and anything between is Neutral. Gold and silver use positioning only, damped, against the dollar’s score.</p>
-<p>Data comes from FRED, the CFTC, the ECB, the Bank of Canada, Finnhub and Myfxbook (retail positioning, shown for context and not scored), and refreshes when you open the site. Macro data lags by weeks and COT by days. The 7D trend lines and the scorecard come from readings saved in your browser. This is a decision aid and not financial advice.</p></section>
+<p>Data comes from FRED, the CFTC, the ECB, the Bank of Canada, Finnhub and Myfxbook (retail positioning, shown for context and not scored), and refreshes when you open the site. Macro data lags by weeks and COT by days. The 7D trend lines and the scorecard come from the daily readings saved on the server when storage is connected, and from your browser otherwise. This is a decision aid and not financial advice.</p></section>
 <section class="legend" id="legend" data-tab="overview"></section>
 <p class="meta" id="updated" data-tab="methodology"></p>
 <p class="meta" id="status" data-tab="methodology"></p>
@@ -135,9 +143,9 @@ const sg=n=>(n>0?"+":"")+n;
 function esc(s){const d=document.createElement("div");d.textContent=s;return d.innerHTML}
 async function load(){
   try{
-    const r=await fetch("/api/bias"+location.search);
+    const r=await fetch("/api/bias"+location.search+(BUST?(location.search?"&":"?")+"x="+Date.now():""));BUST=false;
     if(!r.ok)throw new Error(r.status===401?"This site needs an access key. Add ?key=YOUR_KEY to the address.":"The server returned "+r.status);
-    D=await r.json();LAST=Date.now();render();logReadings();drawCards();drawCharts();scorecard();
+    D=await r.json();LAST=Date.now();render();logReadings();await loadHistory();await loadSettings();drawCards();drawCharts();scorecard();
   }catch(e){document.getElementById("meta").innerHTML="<span class='warn'>Couldn’t load data: "+esc(e.message)+"</span>"}
 }
 function why(p){
@@ -174,15 +182,17 @@ function render(){
   ["All","Very bullish","Bullish","Neutral","Bearish","Very bearish"].forEach(x=>{const b=document.createElement("button");b.className="chip";b.textContent=x;b.setAttribute("aria-pressed",x===filt);b.onclick=()=>{filt=x;render()};fl.appendChild(b)});
   const rows=D.pairs.filter(p=>filt==="All"||p.level===filt).sort((a,b)=>Math.abs(b.gap)-Math.abs(a.gap));
   document.getElementById("pairs").innerHTML=rows.length?rows.map(p=>"<tr><td>"+p.pair+"</td><td style='color:"+COL[p.level]+"'><b>"+p.level+"</b></td><td>"+sg(p.gap)+"</td></tr>").join(""):"<tr><td colspan='3'>No pairs at this level right now.</td></tr>";
-  document.getElementById("cur").innerHTML=Object.entries(D.currencies).sort((a,b)=>b[1].score-a[1].score).map(([c,v])=>"<tr><td>"+c+"</td><td><b>"+v.score+"</b></td><td>"+f(v.comps.rates)+"</td><td>"+f(v.comps.infl)+"</td><td>"+f(v.comps.yld)+(v.yield2y!=null?" ("+v.yield2y.toFixed(2)+"%)":"")+"</td><td>"+f(v.comps.cot)+(v.cotPct!=null?" (pct "+v.cotPct+")":"")+"</td><td>"+f(v.comps.news)+"</td><td>"+f(v.comps.risk)+"</td></tr>").join("");
+  document.getElementById("cur").innerHTML=Object.entries(D.currencies).sort((a,b)=>b[1].score-a[1].score).map(([c,v])=>"<tr><td>"+c+"</td><td><b>"+v.score+"</b></td><td>"+f(v.comps.rates)+"</td><td>"+f(v.comps.infl)+"</td><td>"+f(v.comps.yld)+(v.yield2y!=null?" ("+v.yield2y.toFixed(2)+"%)":"")+"</td><td>"+f(v.comps.cot)+(v.cotPct!=null?" (pct "+v.cotPct+")":"")+"</td><td>"+f(v.comps.news)+"</td><td>"+f(v.comps.risk)+"</td><td>"+f(v.comps.cb)+"</td><td>"+f(v.comps.growth)+"</td><td>"+f(v.comps.surprise)+"</td></tr>").join("");
   document.getElementById("news").innerHTML=D.headlines.length?D.headlines.map(h=>"<li>"+(h.c?"<b>"+h.c+" "+sg(h.s)+"</b> ":"")+(h.url?"<a href='"+encodeURI(h.url)+"' target='_blank' rel='noopener'>"+esc(h.headline)+"</a>":esc(h.headline))+" <span class='meta'>"+esc(h.source||"")+"</span></li>").join(""):"<li class='meta'>No headlines loaded. Add the news keys to enable them.</li>";
   document.getElementById("legend").innerHTML=Object.entries(COL).map(([k,v])=>"<span><i style='background:"+v+"'></i>"+k+"</span>").join("")+"<span>Bias is based on macro data, positioning and news inputs. For informational purposes only.</span>";drawStrip();drawRetail();drawCot();drawCharts();
 }
 const LOGKEY="fxbias-log-v1",H=5,APIS=["https://api.frankfurter.dev/v1","https://api.frankfurter.app"];
-function getLog(){try{return JSON.parse(localStorage.getItem(LOGKEY))||[]}catch(e){return[]}}
+let SNAP=null,HIN=null,HLOG=null;
+function localLog(){try{return JSON.parse(localStorage.getItem(LOGKEY))||[]}catch(e){return[]}}
+function getLog(){return HLOG||localLog()}
 function logReadings(){
   try{
-    const d=D.updated.slice(0,10),log=getLog(),have=new Set(log.filter(x=>x.d===d).map(x=>x.p));
+    const d=D.updated.slice(0,10),log=localLog(),have=new Set(log.filter(x=>x.d===d).map(x=>x.p));
     D.pairs.forEach(p=>{if(!have.has(p.pair))log.push({d,p:p.pair,l:p.level,g:p.gap})});
     localStorage.setItem(LOGKEY,JSON.stringify(log));
   }catch(e){}
@@ -211,6 +221,7 @@ async function scorecard(){
     s.n++;done++;s.abs+=Math.abs(ret);
     if(dir){s.sum+=dir*ret;if(dir*ret>0)s.hit++}
   });
+  inputStats(R,ds,at);
   if(!done){el.innerHTML="<p class='meta'>Collecting data: "+log.length+" readings saved from "+days.length+" day(s). Results appear once a reading is "+H+" trading days old.</p>";return}
   const rows=["Very bullish","Bullish","Neutral","Bearish","Very bearish"].filter(l=>S[l]).map(l=>{
     const s=S[l],dir=l!=="Neutral";
@@ -222,7 +233,7 @@ function exportLog(){
   const csv="date,pair,level,gap\n"+getLog().map(x=>[x.d,x.p,x.l,x.g].join(",")).join("\n");
   const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="fx-bias-log.csv";a.click();
 }
-const NAV=[["Dashboard",[["overview","Overview"]]],["Markets",[["allmarkets","All markets"],["currencies","Currencies and metals"],["score","Scorecard"]]],["Positioning",[["cot","COT report"],["retail","Retail positioning"],["cotpct","COT percentiles"]]],["Sentiment",[["sentiment","Market sentiment"],["board","Fundamentals vs sentiment"]]],["Charts",[["px","Price charts"],["strength","Currency strength"],["history","Gap history"]]],["News",[["calendar","Economic calendar"],["headlines","Headlines"]]],["About",[["methodology","Methodology"]]]];
+const NAV=[["Dashboard",[["overview","Overview"]]],["Markets",[["allmarkets","All markets"],["currencies","Currencies and metals"],["score","Scorecard"]]],["Positioning",[["cot","COT report"],["retail","Retail positioning"],["cotpct","COT percentiles"]]],["Sentiment",[["sentiment","Market sentiment"],["board","Fundamentals vs sentiment"]]],["Inputs",[["desk","Desk inputs"],["trend","Trend and levels"]]],["Charts",[["px","Price charts"],["strength","Currency strength"],["history","Gap history"]]],["News",[["calendar","Economic calendar"],["headlines","Headlines"]]],["About",[["methodology","Methodology"]]]];
 const PAGES=NAV.flatMap(g=>g[1]);
 let TAB=(location.hash||"#overview").slice(1),HP="EUR/USD";
 function closeMenu(){document.getElementById("side").classList.remove("open");document.getElementById("scrim").classList.remove("open");document.getElementById("menu").setAttribute("aria-expanded","false")}
@@ -239,6 +250,8 @@ function showTab(t){
   });
   if(t==="calendar")loadCal();
   if(t==="px")loadPx();
+  if(t==="desk")drawDesk();
+  if(t==="trend")drawTrend();
 }
 document.getElementById("menu").onclick=()=>{const o=document.getElementById("side").classList.toggle("open");document.getElementById("scrim").classList.toggle("open",o);document.getElementById("menu").setAttribute("aria-expanded",String(o))};
 document.getElementById("scrim").onclick=closeMenu;
@@ -272,7 +285,7 @@ const SIDE=(c,k,w)=>{const v=D.currencies[c].comps[k];return v==null?null:c+" "+
 const LINE=(p,k,w)=>p.pair.split("/").map(c=>SIDE(c,k,w)).filter(Boolean).join(" · ");
 function fsAvg(c){
   const m=D.currencies[c].comps,av=a=>{const x=a.map(k=>m[k]).filter(v=>v!=null);return x.length?x.reduce((s,v)=>s+v,0)/x.length*100:null};
-  return{f:av(["rates","infl","yld"]),s:av(["cot","risk","news"])};
+  return{f:av(["rates","infl","yld","cb","growth","surprise"]),s:av(["cot","risk","news"])};
 }
 function split(p){
   const[b,q]=p.pair.split("/"),B=fsAvg(b),Q=fsAvg(q),d=(x,y)=>x==null&&y==null?null:Math.round(((x||0)-(y||0))/2);
@@ -296,7 +309,7 @@ function drivers(p){
     return c+" "+["cutting longs","flat","adding longs"][Math.sign(v)+1]+(Math.abs(v)===0.5?" (crowded)":"")+(cm[c].cotPct!=null?" (52w pct "+cm[c].cotPct+")":"");
   }).filter(Boolean).join(" · ");
   const yl=yb!=null&&yq!=null?"2y yields "+b+" "+yb.toFixed(2)+"% vs "+q+" "+yq.toFixed(2)+"%":LINE(p,"yld",["falling","flat","rising"]);
-  return [["%","Rates",LINE(p,"rates",["falling","flat","rising"])||"No data"],["↗","Yields",yl||"No yield data for this pair"],["◔","Positioning",cotTxt||"No data"]];
+  return [["%","Rates",LINE(p,"rates",["falling","flat","rising"])||"No data"],["↗","Yields",yl||"No yield data for this pair"],["◈","Central banks",LINE(p,"cb",["dovish","neutral","hawkish"])||"Not set"],["◔","Positioning",cotTxt||"No data"]];
 }
 function card2(p){
   const c=COL[p.level],sp=split(p),metal=p.pair.startsWith("XA");
@@ -338,6 +351,108 @@ function drawSent(){
     return "<tr><td><b>"+esc(NAMES[p.pair]||p.pair)+"</b></td><td>"+cbar(s.f)+"</td><td>"+cbar(s.s)+"</td><td class='"+(rd==="Conflict"?"conf":"")+"'>"+rd+"</td><td style='color:"+COL[p.level]+"'><b>"+esc(p.level)+"</b></td></tr>";
   }).join("");
   document.getElementById("sfboard").innerHTML="<table><thead><tr><th>Market</th><th>Fundamentals</th><th>Sentiment</th><th>Reading</th><th>Overall bias</th></tr></thead><tbody>"+rows+"</tbody></table>";
+}
+async function loadHistory(){
+  try{
+    const r=await fetch("/api/history"+location.search);
+    if(!r.ok)return;
+    const j=await r.json();
+    if(!j.days||!Object.keys(j.days).length)return;
+    SNAP=j.days;HIN=j.inputs;HLOG=[];
+    Object.entries(SNAP).forEach(([d,s])=>s.pairs.forEach(([p,g,l])=>HLOG.push({d,p,l,g})));
+  }catch(e){}
+}
+function inputStats(R,ds,at){
+  const el=document.getElementById("inputscore");
+  if(!SNAP||!HIN)return;
+  const S={},NM={rates:"Policy rates",infl:"Inflation",yld:"2-year yields",cot:"COT positioning",news:"News",risk:"Risk tone",cb:"Central bank stance",growth:"Jobs trend",surprise:"Data surprises"};
+  Object.entries(SNAP).forEach(([d,snap])=>{
+    let i=-1;ds.forEach((v,k)=>{if(v<=d)i=k});
+    if(i<0||i+5>=ds.length)return;
+    snap.pairs.forEach(([pair])=>{
+      if(pair.startsWith("XA"))return;
+      const[b,q]=pair.split("/"),cb=snap.cur[b],cq=snap.cur[q];
+      if(!cb||!cq)return;
+      const ret=((at(i+5,q)/at(i+5,b))/(at(i,q)/at(i,b))-1)*100;
+      HIN.forEach((k,j)=>{
+        const x=cb[j+1],y=cq[j+1];
+        if(x==null||y==null)return;
+        const dir=Math.sign(x-y);
+        if(!dir)return;
+        const s=S[k]=S[k]||{n:0,hit:0,sum:0};
+        s.n++;s.sum+=dir*ret;if(dir*ret>0)s.hit++;
+      });
+    });
+  });
+  const rows=HIN.filter(k=>S[k]).map(k=>{const s=S[k];return "<tr><td><b>"+NM[k]+"</b></td><td>"+s.n+"</td><td>"+Math.round(s.hit/s.n*100)+"%</td><td>"+sg(+(s.sum/s.n).toFixed(2))+"%</td></tr>"}).join("");
+  el.innerHTML=rows?"<div class='scroll'><table><thead><tr><th>Input</th><th>Signals checked</th><th>Right direction</th><th>Avg return in signal direction</th></tr></thead><tbody>"+rows+"</tbody></table></div><p class='meta'>An input signals the base currency when it scores higher than the quote currency, and the signal is compared with the pair’s move over the next 5 trading days. Signals from neighbouring days overlap, so treat small samples with care.</p>":"<p class='meta'>Collecting data: results appear once a saved reading is 5 trading days old.</p>";
+}
+let BUST=false,SET={stance:{},surprise:{},levels:{}},SETERR="";
+const CURS=["USD","EUR","GBP","JPY","AUD","NZD","CAD","CHF"];
+const ea=s=>esc(String(s)).replace(/'/g,"&#39;").replace(/"/g,"&quot;");
+const ago=t=>{if(!t)return"";const d=Math.floor((Date.now()-t)/864e5);return d<1?"today":d+" days ago"};
+async function loadSettings(){
+  try{
+    const r=await fetch("/api/settings"+location.search);
+    if(!r.ok)return;
+    const j=await r.json();
+    SET={stance:j.stance||{},surprise:j.surprise||{},levels:j.levels||{}};SETERR=j.error||"";
+  }catch(e){}
+}
+async function saveSet(key){
+  try{
+    const r=await fetch("/api/settings"+location.search,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({key,value:SET[key]})});
+    return r.ok;
+  }catch(e){return false}
+}
+function drawDesk(){
+  const el=document.getElementById("deskbox"),OPT={stance:[["","Not set"],["-1","Dovish"],["0","Neutral"],["1","Hawkish"]],surprise:[["","Not set"],["-1","Missing forecasts"],["0","In line"],["1","Beating forecasts"]]};
+  if(SETERR)document.getElementById("desknote").textContent="Storage isn’t connected, so changes can’t be saved.";
+  const cell=(k,c)=>{
+    const e=SET[k][c],cur=e&&Number.isFinite(e.v)?String(e.v):"";
+    return "<td><select data-k='"+k+"' data-c='"+c+"' aria-label='"+k+" "+c+"'>"+OPT[k].map(o=>"<option value='"+o[0]+"'"+(o[0]===cur?" selected":"")+">"+o[1]+"</option>").join("")+"</select></td><td class='meta'>"+(e?ago(e.t):"")+"</td>";
+  };
+  el.innerHTML="<table><thead><tr><th>Currency</th><th>Central bank stance</th><th>Updated</th><th>Data surprises</th><th>Updated</th></tr></thead><tbody>"+CURS.map(c=>"<tr><td><b>"+c+"</b></td>"+cell("stance",c)+cell("surprise",c)+"</tr>").join("")+"</tbody></table>";
+  el.querySelectorAll("select").forEach(s=>s.onchange=async()=>{
+    const k=s.dataset.k,c=s.dataset.c;
+    if(s.value==="")delete SET[k][c];else SET[k][c]={v:+s.value,t:Date.now()};
+    const ok=await saveSet(k);
+    drawDesk();
+    document.getElementById("desknote").textContent=ok?"Saved. The scores are refreshing now.":"Couldn’t save. Check that history storage is connected.";
+    if(ok){BUST=true;load()}
+  });
+}
+async function drawTrend(){
+  const el=document.getElementById("trendbox");
+  let R=null;
+  try{R=await series(new Date(Date.now()-130*864e5).toISOString().slice(0,10),new Date().toISOString().slice(0,10))}catch(e){}
+  const ds=R?Object.keys(R).sort():[],px=(i,b,q)=>(q==="USD"?1:R[ds[i]][q])/(b==="USD"?1:R[ds[i]][b]);
+  const rows=WATCH.map(w=>{
+    const[b,q]=w.split("/"),p=D&&D.pairs.find(x=>x.pair===w),metal=w.startsWith("XA"),pip=q==="JPY"?0.01:0.0001,L=SET.levels[w]||{};
+    let tr="n/a",rd="–",last=metal?"No price source":R?"Not enough data":"Prices unavailable",lastP=null;
+    if(R&&!metal&&ds.length>=50){
+      const ser=ds.map((_,i)=>px(i,b,q)),n=ser.length,sma=k=>ser.slice(-k).reduce((a,v)=>a+v,0)/k,s20=sma(20),s50=sma(50);
+      lastP=ser[n-1];
+      const t=lastP>s50&&s20>s50?1:lastP<s50&&s20<s50?-1:0,lv=p?p.level.toLowerCase():"",dir=lv.includes("bullish")?1:lv.includes("bearish")?-1:0;
+      tr=t>0?"Up":t<0?"Down":"Mixed";
+      rd=!p?"–":dir===0?"No bias":t===0?"Trend unclear":dir===t?"Aligned":"Conflict";
+      last=lastP.toFixed(q==="JPY"?3:5)+" ("+ds[n-1]+")";
+    }
+    const nums=((L.d||"")+","+(L.h||"")).split(/[,\s;]+/).map(parseFloat).filter(v=>isFinite(v));
+    let nr="–";
+    if(lastP!=null&&nums.length){
+      const sup=nums.filter(v=>v<=lastP),res=nums.filter(v=>v>=lastP),pips=v=>Math.round(Math.abs(v-lastP)/pip);
+      nr=(sup.length?"S "+Math.max(...sup)+" (−"+pips(Math.max(...sup))+" pips)":"S –")+" · "+(res.length?"R "+Math.min(...res)+" (+"+pips(Math.min(...res))+" pips)":"R –");
+    }
+    return "<tr><td><b>"+esc(NAMES[w]||w)+"</b></td><td style='color:"+(p?COL[p.level]:"inherit")+"'><b>"+(p?esc(p.level):"–")+"</b></td><td>"+tr+"</td><td class='"+(rd==="Conflict"?"conf":"")+"'>"+rd+"</td><td>"+last+"</td>"+
+      "<td><input class='lv' data-p='"+w+"' data-t='d' value='"+ea(L.d||"")+"' placeholder='1.0850, 1.0920' aria-label='Daily levels "+w+"'></td><td><input class='lv' data-p='"+w+"' data-t='h' value='"+ea(L.h||"")+"' placeholder='1.0880' aria-label='4 hour levels "+w+"'></td><td>"+nr+"</td></tr>";
+  }).join("");
+  el.innerHTML="<table><thead><tr><th>Market</th><th>Bias</th><th>Trend</th><th>Bias vs trend</th><th>Last ECB rate</th><th>Daily levels</th><th>4H levels</th><th>Nearest support and resistance</th></tr></thead><tbody>"+rows+"</tbody></table>";
+  el.querySelectorAll(".lv").forEach(i=>i.onchange=async()=>{
+    const p=i.dataset.p;
+    SET.levels[p]=Object.assign({},SET.levels[p],{[i.dataset.t]:i.value,t:Date.now()});
+    await saveSet("levels");drawTrend();
+  });
 }
 let CSORT={k:"netPctChg",d:-1};
 function drawCot(){
