@@ -278,6 +278,33 @@ const manual = (st, key, c, maxAgeDays) => {
   return e.v;
 };
 
+// Automatic reading of central bank stance and data surprises from recent forex headlines (needs both news keys).
+// Your own settings on the Desk inputs page always win. A currency the headlines say nothing about stays empty.
+const BANKS = "USD (Fed), EUR (ECB), GBP (Bank of England), JPY (Bank of Japan), AUD (RBA), NZD (RBNZ), CAD (Bank of Canada), CHF (SNB)";
+const stanceAI = () => cached("stanceai", 6 * 36e5, async () => {
+  const fk = process.env.FINNHUB_API_KEY, ak = process.env.ANTHROPIC_API_KEY;
+  if (!fk || !ak) throw new Error("needs FINNHUB_API_KEY and ANTHROPIC_API_KEY");
+  const raw = (await getJson(`https://finnhub.io/api/v1/news?category=forex&token=${fk}`)).slice(0, 100);
+  const res = await getJson("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-api-key": ak, "anthropic-version": "2023-06-01" },
+    body: JSON.stringify({
+      model: "claude-haiku-5-5", max_tokens: 2000,
+      system: "You assess central bank stance from forex news headlines. The banks are: " + BANKS + ". For each currency return stance: 1 if the bank is signalling tighter policy or higher rates for longer (hawkish), -1 if it is signalling cuts or easier policy (dovish), 0 if it is on hold with a balanced message, null if the headlines say nothing about it. Also return surprise: 1 if recent major economic data for that economy beat forecasts, -1 if it missed, 0 if in line or mixed, null if the headlines say nothing. Add why (under 15 words) and i (the number of the single most relevant headline, or null). Use only the headlines given and never guess. Reply with JSON only, like {\"USD\":{\"stance\":1,\"surprise\":null,\"why\":\"...\",\"i\":3}}.",
+      messages: [{ role: "user", content: raw.map((n, i) => `${i}: ${n.headline}`).join("\n") }]
+    })
+  });
+  const j = JSON.parse(res.content[0].text.replace(/```json|```/g, "").trim());
+  const ok = v => (v === 1 || v === 0 || v === -1 ? v : null);
+  const cur = {};
+  for (const c of CUR) {
+    const e = j[c] || {}, n = Number.isInteger(e.i) ? raw[e.i] : null;
+    cur[c] = { stance: ok(e.stance), surprise: ok(e.surprise), why: String(e.why || "").slice(0, 120), headline: n ? n.headline : null, url: n ? n.url : null };
+  }
+  return { t: Date.now(), cur };
+});
+const autoVal = (ai, c, k) => (ai.error || !ai.cur[c] || !Number.isFinite(ai.cur[c][k]) ? null : ai.cur[c][k]);
+
 const level = g => (g >= 50 ? "Very bullish" : g >= 25 ? "Bullish" : g <= -50 ? "Very bearish" : g <= -25 ? "Bearish" : "Neutral");
 
 module.exports = async (req, res) => {
@@ -285,7 +312,7 @@ module.exports = async (req, res) => {
     res.status(401).json({ error: "Access key required" });
     return;
   }
-  const [m, c, n, y, r, rt, jb, st] = await Promise.all([macro(), cot(), news(), yields(), risk(), outlook(), jobs(), settings()]);
+  const [m, c, n, y, r, rt, jb, st, ai] = await Promise.all([macro(), cot(), news(), yields(), risk(), outlook(), jobs(), settings(), stanceAI()]);
   const miss = CUR.filter(x => y.error || !y[x]);
   const status = { retail: rt.error ? rt.error : "ok", risk: r.error ? r.error : "ok", yields: miss.length ? "no data for " + miss.join(", ") : "ok", macro: m.error ? m.error : "ok", cot: c.error ? c.error : "ok", news: n.error ? n.error : n.unscored ? "headlines only, scoring needs ANTHROPIC_API_KEY" : "ok" };
   const currencies = {};
@@ -295,9 +322,9 @@ module.exports = async (req, res) => {
       infl: m.error ? null : m[cu].infl,
       yld: y.error || !y[cu] ? null : sign(y[cu].chg, 0.1), // +/-1 if the 2y yield moved more than 10bp in about 4 weeks
       risk: r.error ? null : Math.round(r.tone * SENS[cu] * 100) / 100,
-      cb: manual(st, "stance", cu, 0), // no expiry: it changes only at meetings
+      cb: (v => (v !== null ? v : autoVal(ai, cu, "stance")))(manual(st, "stance", cu, 0)), // your setting wins, otherwise the automatic reading
       growth: jb.error ? null : jb[cu],
-      surprise: manual(st, "surprise", cu, 14), // expires after 14 days
+      surprise: (v => (v !== null ? v : autoVal(ai, cu, "surprise")))(manual(st, "surprise", cu, 14)), // your setting (14 days) wins, otherwise automatic
       cot: c.error ? null : c.vals[cu],
       news: n.error ? null : n.scores[cu]
     };
@@ -318,10 +345,11 @@ module.exports = async (req, res) => {
   });
   if (!m.error && !c.error) await saveSnapshot(currencies, pairs); else saveNote = "skipped: macro or COT data did not load";
   status.storage = saveNote;
+  status.autoReading = ai.error ? ai.error : "ok";
   const yerr = Object.entries(YERR).map(([k, v]) => k + ": " + v).join("; ");
   if (yerr) status.yieldErrors = yerr;
   const jm = CUR.filter(x => jb.error || jb[x] == null);
   if (jm.length) status.jobsData = "no data for " + jm.join(", ");
   res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate=600");
-  res.status(200).json({ updated: new Date().toISOString(), status, risk: r.error ? null : r, retail: rt.error ? null : { symbols: rt }, cotTable: c.error ? null : c.table, currencies, pairs, headlines: n.error ? [] : n.items });
+  res.status(200).json({ updated: new Date().toISOString(), status, risk: r.error ? null : r, retail: rt.error ? null : { symbols: rt }, auto: ai.error ? null : ai, cotTable: c.error ? null : c.table, currencies, pairs, headlines: n.error ? [] : n.items });
 };
