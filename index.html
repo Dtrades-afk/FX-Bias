@@ -48,7 +48,7 @@ li{margin-bottom:6px}a{color:var(--hd)}
 .ch{display:flex;align-items:center;gap:10px;padding-bottom:12px;border-bottom:1px solid var(--line)}
 .ico{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--card2);border:1px solid var(--line);font-size:11px;font-weight:700;color:var(--hd)}
 .ch b{font-size:17px}.ch small{display:block;color:var(--mute);font-size:12px}.sc{margin-left:auto;text-align:right}
-.mid2{display:grid;grid-template-columns:96px 1fr 110px;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.mid2{display:grid;grid-template-columns:124px 1fr 110px;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
 .gauge,.spark{width:100%;display:block}.lv b{display:block;font-size:17px;letter-spacing:.03em;text-transform:uppercase}.lv small,.sp small{color:var(--mute);font-size:12px}.nospark{font-size:11px;color:var(--mute)}
 .kd h3{margin:10px 0 4px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--hd)}
 .kd div{display:grid;grid-template-columns:22px 82px 1fr;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13.5px}.kd div:last-child{border:0}.kd i{font-style:normal;color:var(--hd)}.kd em{font-style:normal;color:var(--mute)}
@@ -296,9 +296,13 @@ function split(p){
   const[b,q]=p.pair.split("/"),B=fsAvg(b),Q=fsAvg(q),d=(x,y)=>x==null&&y==null?null:Math.round(((x||0)-(y||0))/2);
   return{f:d(B.f,Q.f),s:d(B.s,Q.s)};
 }
-function gauge(p,c){
-  const pct=Math.max(4,Math.min(100,(p.gap+100)/2)),a=Math.PI*(1-pct/100),nx=60+34*Math.cos(a),ny=62-34*Math.sin(a),arc="M10 62 A50 50 0 0 1 110 62";
-  return "<svg viewBox='0 0 120 70' class='gauge' role='img' aria-label='"+esc(p.level)+"'><path d='"+arc+"' pathLength='100' fill='none' stroke='var(--line)' stroke-width='10'/><path d='"+arc+"' pathLength='100' fill='none' stroke='"+c+"' stroke-width='10' stroke-dasharray='"+pct+" 100'/><line x1='60' y1='62' x2='"+nx.toFixed(1)+"' y2='"+ny.toFixed(1)+"' stroke='var(--ink)' stroke-width='2.5' stroke-linecap='round'/><circle cx='60' cy='62' r='3.5' fill='var(--ink)'/></svg>";
+function gauge(p){
+  const g=Math.max(-100,Math.min(100,p.gap)),f=Math.max(.03,Math.min(.97,(g+100)/200)),z=g<=-25?0:g>=25?2:1,e=.012;
+  const pt=(x,r)=>[60+r*Math.cos(Math.PI*(1-x)),62-r*Math.sin(Math.PI*(1-x))].map(v=>v.toFixed(1));
+  const seg=(a,b,col,on)=>{const[x1,y1]=pt(a,50),[x2,y2]=pt(b,50);return "<path d='M"+x1+" "+y1+" A50 50 0 0 1 "+x2+" "+y2+"' fill='none' stroke='"+col+"' stroke-width='10' opacity='"+(on?1:.4)+"'/>"};
+  const tick=x=>{const[a,b]=pt(x,44),[c,d]=pt(x,56);return "<line x1='"+a+"' y1='"+b+"' x2='"+c+"' y2='"+d+"' stroke='var(--card)' stroke-width='1.2'/>"};
+  const[nx,ny]=pt(f,38);
+  return "<svg viewBox='0 0 120 70' class='gauge' role='img' aria-label='"+esc(p.level)+"'>"+seg(0,.375-e,"var(--br)",z===0)+seg(.375+e,.625-e,"var(--n)",z===1)+seg(.625+e,1,"var(--b)",z===2)+tick(.25)+tick(.75)+"<line x1='60' y1='62' x2='"+nx+"' y2='"+ny+"' stroke='var(--ink)' stroke-width='2.5' stroke-linecap='round'/><circle cx='60' cy='62' r='3.5' fill='var(--ink)'/></svg>";
 }
 function spark(pair,c){
   const pts=getLog().filter(x=>x.p===pair).sort((a,b)=>a.d<b.d?-1:1).slice(-7);
