@@ -81,6 +81,7 @@ select{background:var(--card2);color:var(--ink);border:1px solid var(--line);bor
 .scrim{display:none}
 .lv{width:130px;background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:4px 8px;font:inherit}
 @media(max-width:860px){.side{position:fixed;left:0;top:0;bottom:0;z-index:30;transform:translateX(-100%);transition:transform .2s}.side.open{transform:none}.scrim.open{display:block;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:20}.menu{display:inline-block}.bar .meta{margin-left:0;width:100%}}
+#setupbox th,#setupbox td{padding:6px 8px}#setupbox .n{text-align:center;font-variant-numeric:tabular-nums;min-width:62px}
 </style>
 </head>
 <body>
@@ -115,6 +116,10 @@ select{background:var(--card2);color:var(--ink);border:1px solid var(--line);bor
 <h3 style="font-size:15px;margin:18px 0 8px">Results by input</h3><div id="inputscore"><p class="meta">Results by input appear once history storage is connected and a few days of readings are saved.</p></div>
 <button class="chip" onclick="exportLog()">Download log (CSV)</button>
 <p class="meta">Prices are ECB daily reference rates from Frankfurter, not your broker’s prices. Gold and silver are logged but not checked, because no price source is connected for them. The log lives only in this browser, so it grows only on days you open the site on this device. Small samples can mislead.</p></section>
+<section data-tab="setups"><h2>Top setups</h2>
+<div class="chips" id="stfilters"></div>
+<div class="scroll" id="setupbox"></div>
+<p class="meta">Every pair, ranked by bias. Each input cell shows how far the base currency scores above (blue) or below (red) the quote currency on that input, and a dash means that input has no data. The ★ marks your six pairs. For gold and silver, only the dollar side and positioning are scored. A strong bias is a reason to look closer, not an entry signal.</p></section>
 <section data-tab="desk"><h2>Central bank stance and data surprises</h2>
 <p class="meta">The site reads recent central bank and economic data headlines and fills these in for you once the news keys are set, so you can leave everything on Automatic. Each row shows what it is using and why. Pick a value yourself only to override the automatic reading. Your own surprise setting stops counting after 14 days, and then the automatic reading takes over again.</p>
 <div class="scroll" id="deskbox"></div><p class="meta" id="desknote"></p></section>
@@ -184,7 +189,7 @@ function render(){
   document.getElementById("pairs").innerHTML=rows.length?rows.map(p=>"<tr><td>"+p.pair+"</td><td style='color:"+COL[p.level]+"'><b>"+p.level+"</b></td><td>"+sg(p.gap)+"</td></tr>").join(""):"<tr><td colspan='3'>No pairs at this level right now.</td></tr>";
   document.getElementById("cur").innerHTML=Object.entries(D.currencies).sort((a,b)=>b[1].score-a[1].score).map(([c,v])=>"<tr><td>"+c+"</td><td><b>"+v.score+"</b></td><td>"+f(v.comps.rates)+"</td><td>"+f(v.comps.infl)+"</td><td>"+f(v.comps.yld)+(v.yield2y!=null?" ("+v.yield2y.toFixed(2)+"%)":"")+"</td><td>"+f(v.comps.cot)+(v.cotPct!=null?" (pct "+v.cotPct+")":"")+"</td><td>"+f(v.comps.news)+"</td><td>"+f(v.comps.risk)+"</td><td>"+f(v.comps.cb)+"</td><td>"+f(v.comps.growth)+"</td><td>"+f(v.comps.surprise)+"</td></tr>").join("");
   document.getElementById("news").innerHTML=D.headlines.length?D.headlines.map(h=>"<li>"+(h.c?"<b>"+h.c+" "+sg(h.s)+"</b> ":"")+(h.url?"<a href='"+encodeURI(h.url)+"' target='_blank' rel='noopener'>"+esc(h.headline)+"</a>":esc(h.headline))+" <span class='meta'>"+esc(h.source||"")+"</span></li>").join(""):"<li class='meta'>No headlines loaded. Add the news keys to enable them.</li>";
-  document.getElementById("legend").innerHTML=Object.entries(COL).map(([k,v])=>"<span><i style='background:"+v+"'></i>"+k+"</span>").join("")+"<span>Bias is based on macro data, positioning and news inputs. For informational purposes only.</span>";drawStrip();drawRetail();drawCot();drawCharts();
+  document.getElementById("legend").innerHTML=Object.entries(COL).map(([k,v])=>"<span><i style='background:"+v+"'></i>"+k+"</span>").join("")+"<span>Bias is based on macro data, positioning and news inputs. For informational purposes only.</span>";drawStrip();drawRetail();drawCot();drawSetups();drawCharts();
 }
 const LOGKEY="fxbias-log-v1",H=5,APIS=["https://api.frankfurter.dev/v1","https://api.frankfurter.app"];
 let SNAP=null,HIN=null,HLOG=null;
@@ -233,7 +238,7 @@ function exportLog(){
   const csv="date,pair,level,gap\n"+getLog().map(x=>[x.d,x.p,x.l,x.g].join(",")).join("\n");
   const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="fx-bias-log.csv";a.click();
 }
-const NAV=[["Dashboard",[["overview","Overview"]]],["Markets",[["allmarkets","All markets"],["currencies","Currencies and metals"],["score","Scorecard"]]],["Positioning",[["cot","COT report"],["retail","Retail positioning"],["cotpct","COT percentiles"]]],["Sentiment",[["sentiment","Market sentiment"],["board","Fundamentals vs sentiment"]]],["Inputs",[["desk","Desk inputs"],["trend","Trend and levels"]]],["Charts",[["px","Price charts"],["strength","Currency strength"],["history","Gap history"]]],["News",[["calendar","Economic calendar"],["headlines","Headlines"]]],["About",[["methodology","Methodology"]]]];
+const NAV=[["Dashboard",[["overview","Overview"],["setups","Top setups"]]],["Markets",[["allmarkets","All markets"],["currencies","Currencies and metals"],["score","Scorecard"]]],["Positioning",[["cot","COT report"],["retail","Retail positioning"],["cotpct","COT percentiles"]]],["Sentiment",[["sentiment","Market sentiment"],["board","Fundamentals vs sentiment"]]],["Inputs",[["desk","Desk inputs"],["trend","Trend and levels"]]],["Charts",[["px","Price charts"],["strength","Currency strength"],["history","Gap history"]]],["News",[["calendar","Economic calendar"],["headlines","Headlines"]]],["About",[["methodology","Methodology"]]]];
 const PAGES=NAV.flatMap(g=>g[1]);
 let TAB=(location.hash||"#overview").slice(1),HP="EUR/USD";
 function closeMenu(){document.getElementById("side").classList.remove("open");document.getElementById("scrim").classList.remove("open");document.getElementById("menu").setAttribute("aria-expanded","false")}
@@ -463,6 +468,27 @@ async function drawTrend(){
     SET.levels[p]=Object.assign({},SET.levels[p],{[i.dataset.t]:i.value,t:Date.now()});
     await saveSet("levels");drawTrend();
   });
+}
+let STF="All",STS="strength";
+function drawSetups(){
+  if(!D)return;
+  const K=[["rates","Rates"],["infl","Inflation"],["yld","Yields"],["cb","Central bank"],["growth","Jobs"],["surprise","Surprises"],["cot","COT"],["risk","Risk"],["news","News"]];
+  const num=v=>{const r=Math.round(v*100)/100;return(r>0?"+":"")+r};
+  const all=D.pairs.map(p=>{
+    const[b,q]=p.pair.split("/"),cb=D.currencies[b].comps,cq=D.currencies[q].comps,metal=b.startsWith("XA");
+    return{p,mine:WATCH.includes(p.pair),cells:K.map(([k])=>{const y=cq[k],x=metal&&cb[k]==null?0:cb[k];return x==null||y==null?null:x-y})};
+  });
+  const lv=r=>r.p.level.toLowerCase();
+  const rows=all.filter(r=>STF==="All"||(STF==="Mine"?r.mine:STF==="Bullish"?lv(r).includes("bullish"):lv(r).includes("bearish")))
+    .sort((a,b)=>STS==="bull"?b.p.gap-a.p.gap:STS==="bear"?a.p.gap-b.p.gap:Math.abs(b.p.gap)-Math.abs(a.p.gap));
+  const fl=document.getElementById("stfilters");fl.innerHTML="";
+  const chip=(label,on,fn)=>{const b=document.createElement("button");b.className="chip";b.textContent=label;b.setAttribute("aria-pressed",on);b.onclick=fn;fl.appendChild(b)};
+  [["All","All pairs"],["Mine","My pairs"],["Bullish","Bullish"],["Bearish","Bearish"]].forEach(([v,l])=>chip(l,STF===v,()=>{STF=v;drawSetups()}));
+  const sp=document.createElement("span");sp.className="meta";sp.style.cssText="align-self:center;margin:0 4px 0 10px";sp.textContent="Sort:";fl.appendChild(sp);
+  [["strength","Strongest"],["bull","Most bullish"],["bear","Most bearish"]].forEach(([v,l])=>chip(l,STS===v,()=>{STS=v;drawSetups()}));
+  const cell=v=>v==null?"<td class='n' style='color:var(--mute)'>–</td>":"<td class='n' style='background:rgba("+(v>0?"65,148,255":v<0?"240,68,93":"160,174,192")+","+(v===0?.18:Math.min(.65,.3+Math.abs(v)*.25))+")'>"+num(v)+"</td>";
+  const body=rows.map(r=>"<tr"+(r.mine?" style='box-shadow:inset 3px 0 0 var(--hd)'":"")+"><td><b>"+esc(r.p.pair)+"</b></td><td class='n'>"+(r.mine?"★":"")+"</td><td style='color:"+COL[r.p.level]+"'><b>"+esc(r.p.level)+"</b></td><td class='n'><b>"+sg(r.p.gap)+"</b></td>"+r.cells.map(cell).join("")+"</tr>").join("");
+  document.getElementById("setupbox").innerHTML=rows.length?"<table><thead><tr><th rowspan='2'>Pair</th><th rowspan='2' class='n'>Mine</th><th rowspan='2'>Bias</th><th rowspan='2' class='n'>Score</th><th colspan='6' class='n'>Fundamentals</th><th colspan='3' class='n'>Sentiment</th></tr><tr>"+K.map(([,l])=>"<th class='n'>"+l+"</th>").join("")+"</tr></thead><tbody>"+body+"</tbody></table>":"<p class='meta'>No pairs match this filter.</p>";
 }
 let CSORT={k:"netPctChg",d:-1};
 function drawCot(){
