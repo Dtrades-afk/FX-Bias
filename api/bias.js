@@ -9,7 +9,7 @@ const COT = { EUR: "099741", GBP: "096742", JPY: "097741", AUD: "232741", NZD: "
 // [FRED series id, lookback in observations]
 const RATE = { USD: ["IRSTCI01USM156N", 3], EUR: ["IRSTCI01EZM156N", 3], GBP: ["IRSTCI01GBM156N", 3], JPY: ["IRSTCI01JPM156N", 3], AUD: ["IRSTCI01AUM156N", 3], NZD: ["IRSTCI01NZM156N", 3], CAD: ["IRSTCI01CAM156N", 3], CHF: ["IRSTCI01CHM156N", 3] };
 const CPI = { USD: ["CPALTT01USM659N", 3], EUR: ["CPALTT01EZM659N", 3], GBP: ["CPALTT01GBM659N", 3], JPY: ["CPALTT01JPM659N", 3], AUD: ["CPALTT01AUQ659N", 1], NZD: ["CPALTT01NZQ659N", 1], CAD: ["CPALTT01CAM659N", 3], CHF: ["CPALTT01CHM659N", 3] };
-const W = { rates: 1, infl: 1, yld: 1, cot: 1, news: 1, risk: 1 }; // equal weights; news is about 17% when all inputs exist
+const W = { rates: 1, infl: 1, yld: 1, cot: 1, news: 1, risk: 1, cb: 1, growth: 1, surprise: 1 }; // equal weights; news is about 11% when all nine inputs exist
 const TTL = { cot: 6 * 36e5, macro: 6 * 36e5, news: 30 * 6e4 };
 
 const mem = {};
@@ -248,6 +248,36 @@ async function saveSnapshot(currencies, pairs) {
   } catch (e) { saveNote = "could not save: " + String(e.message || e); }
 }
 
+// Growth and jobs: change in the unemployment rate (FRED, OECD harmonised series). Falling unemployment is supportive.
+// Series IDs are from memory and unverified. A failing series just leaves that currency without this input.
+const JOBS = { USD: ["UNRATE", 3], EUR: ["LRHUTTTTEZM156S", 3], GBP: ["LRHUTTTTGBM156S", 3], JPY: ["LRHUTTTTJPM156S", 3], AUD: ["LRHUTTTTAUM156S", 3], NZD: ["LRHUTTTTNZQ156S", 1], CAD: ["LRHUTTTTCAM156S", 3], CHF: ["LRHUTTTTCHM156S", 3] };
+const jobs = () => cached("jobs", TTL.macro, async () => {
+  const out = {};
+  for (const c of CUR) {
+    try { out[c] = -(await fred(...JOBS[c])) || 0; } catch (e) { out[c] = null; }
+  }
+  return out;
+});
+
+// Inputs you set by hand on the Desk inputs page (central bank stance, data surprises). Stored in the database.
+let setCache = { t: 0, v: {} };
+async function settings() {
+  if (Date.now() - setCache.t < 60000) return setCache.v;
+  try {
+    const flat = await redis(["HGETALL", "settings"]);
+    const v = {};
+    for (let i = 0; i < flat.length; i += 2) { try { v[flat[i]] = JSON.parse(flat[i + 1]); } catch (e) { /* skip */ } }
+    setCache = { t: Date.now(), v };
+    return v;
+  } catch (e) { return setCache.v || {}; }
+}
+const manual = (st, key, c, maxAgeDays) => {
+  const e = st[key] && st[key][c];
+  if (!e || !Number.isFinite(e.v)) return null;
+  if (maxAgeDays && Date.now() - e.t > maxAgeDays * 864e5) return null; // stale entries stop counting
+  return e.v;
+};
+
 const level = g => (g >= 50 ? "Very bullish" : g >= 25 ? "Bullish" : g <= -50 ? "Very bearish" : g <= -25 ? "Bearish" : "Neutral");
 
 module.exports = async (req, res) => {
@@ -255,7 +285,7 @@ module.exports = async (req, res) => {
     res.status(401).json({ error: "Access key required" });
     return;
   }
-  const [m, c, n, y, r, rt] = await Promise.all([macro(), cot(), news(), yields(), risk(), outlook()]);
+  const [m, c, n, y, r, rt, jb, st] = await Promise.all([macro(), cot(), news(), yields(), risk(), outlook(), jobs(), settings()]);
   const miss = CUR.filter(x => y.error || !y[x]);
   const status = { retail: rt.error ? rt.error : "ok", risk: r.error ? r.error : "ok", yields: miss.length ? "no data for " + miss.join(", ") : "ok", macro: m.error ? m.error : "ok", cot: c.error ? c.error : "ok", news: n.error ? n.error : n.unscored ? "headlines only, scoring needs ANTHROPIC_API_KEY" : "ok" };
   const currencies = {};
@@ -265,6 +295,9 @@ module.exports = async (req, res) => {
       infl: m.error ? null : m[cu].infl,
       yld: y.error || !y[cu] ? null : sign(y[cu].chg, 0.1), // +/-1 if the 2y yield moved more than 10bp in about 4 weeks
       risk: r.error ? null : Math.round(r.tone * SENS[cu] * 100) / 100,
+      cb: manual(st, "stance", cu, 0), // no expiry: it changes only at meetings
+      growth: jb.error ? null : jb[cu],
+      surprise: manual(st, "surprise", cu, 14), // expires after 14 days
       cot: c.error ? null : c.vals[cu],
       news: n.error ? null : n.scores[cu]
     };
@@ -287,6 +320,8 @@ module.exports = async (req, res) => {
   status.storage = saveNote;
   const yerr = Object.entries(YERR).map(([k, v]) => k + ": " + v).join("; ");
   if (yerr) status.yieldErrors = yerr;
+  const jm = CUR.filter(x => jb.error || jb[x] == null);
+  if (jm.length) status.jobsData = "no data for " + jm.join(", ");
   res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate=600");
   res.status(200).json({ updated: new Date().toISOString(), status, risk: r.error ? null : r, retail: rt.error ? null : { symbols: rt }, cotTable: c.error ? null : c.table, currencies, pairs, headlines: n.error ? [] : n.items });
 };
