@@ -116,14 +116,14 @@ select{background:var(--card2);color:var(--ink);border:1px solid var(--line);bor
 <button class="chip" onclick="exportLog()">Download log (CSV)</button>
 <p class="meta">Prices are ECB daily reference rates from Frankfurter, not your broker’s prices. Gold and silver are logged but not checked, because no price source is connected for them. The log lives only in this browser, so it grows only on days you open the site on this device. Small samples can mislead.</p></section>
 <section data-tab="desk"><h2>Central bank stance and data surprises</h2>
-<p class="meta">Set these by hand and they feed the bias scores. Update the stance after each central bank meeting, and the surprises about weekly using the actual and forecast numbers on the Economic calendar page. Surprises stop counting after 14 days.</p>
+<p class="meta">The site reads recent central bank and economic data headlines and fills these in for you once the news keys are set, so you can leave everything on Automatic. Each row shows what it is using and why. Pick a value yourself only to override the automatic reading. Your own surprise setting stops counting after 14 days, and then the automatic reading takes over again.</p>
 <div class="scroll" id="deskbox"></div><p class="meta" id="desknote"></p></section>
 <section data-tab="trend"><h2>Trend and key levels</h2>
 <div class="scroll" id="trendbox"><p class="meta">Loading prices…</p></div>
 <p class="meta">Trend compares the latest ECB daily reference rate with its 20 and 50 day averages (forex only: gold and silver have no price source here). Levels are saved on the server. Distances use the last ECB rate, not a live price. The trend is a check on the bias and is not part of the score.</p></section>
 <section data-tab="methodology" class="meth"><h2>Methodology</h2>
 <p>Each currency gets a score from −100 to +100, the average of the inputs that loaded. Every input counts as +1, 0 or −1 (equal weights, untested):</p>
-<ul><li><b>Fundamentals:</b> policy-rate trend, inflation trend, 2-year yield trend (USD, EUR, CAD, JPY, AUD and CHF where the source loads), jobs trend (change in the unemployment rate), plus two inputs you set by hand: central bank stance and data surprises.</li>
+<ul><li><b>Fundamentals:</b> policy-rate trend, inflation trend, 2-year yield trend (USD, EUR, CAD, JPY, AUD and CHF where the source loads), jobs trend (change in the unemployment rate), plus central bank stance and data surprises, which are read automatically from recent headlines when the news keys are set and can be overridden by hand.</li>
 <li><b>Sentiment:</b> speculative positioning from the weekly CFTC COT report (halved when positioning is crowded), market risk tone from the VIX and S&amp;P 500, and AI-scored news headlines when the news keys are set.</li></ul>
 <p>A pair’s bias is the base score minus the quote score, halved. Gaps of +25 and +50 or more read Bullish and Very bullish, −25 and −50 or less read Bearish and Very bearish, and anything between is Neutral. Gold and silver use positioning only, damped, against the dollar’s score.</p>
 <p>Data comes from FRED, the CFTC, the ECB, the Bank of Canada, Finnhub and Myfxbook (retail positioning, shown for context and not scored), and refreshes when you open the site. Macro data lags by weeks and COT by days. The 7D trend lines and the scorecard come from the daily readings saved on the server when storage is connected, and from your browser otherwise. This is a decision aid and not financial advice.</p></section>
@@ -406,13 +406,23 @@ async function saveSet(key){
   }catch(e){return false}
 }
 function drawDesk(){
-  const el=document.getElementById("deskbox"),OPT={stance:[["","Not set"],["-1","Dovish"],["0","Neutral"],["1","Hawkish"]],surprise:[["","Not set"],["-1","Missing forecasts"],["0","In line"],["1","Beating forecasts"]]};
-  if(SETERR)document.getElementById("desknote").textContent="Storage isn’t connected, so changes can’t be saved.";
+  const el=document.getElementById("deskbox"),OPT={stance:[["","Automatic"],["-1","Dovish"],["0","Neutral"],["1","Hawkish"]],surprise:[["","Automatic"],["-1","Missing forecasts"],["0","In line"],["1","Beating forecasts"]]};
+  const WORD={stance:["Dovish","Neutral","Hawkish"],surprise:["Missing forecasts","In line","Beating forecasts"]},A=D&&D.auto&&D.auto.cur?D.auto.cur:{};
+  if(SETERR)document.getElementById("desknote").textContent="Storage isn’t connected, so your own settings can’t be saved.";
+  const info=(k,c)=>{
+    const e=SET[k][c],a=A[c],av=a?a[k]:null;
+    if(e&&Number.isFinite(e.v))return "Using your setting ("+ago(e.t)+")";
+    if(Number.isFinite(av)){
+      const src=k==="stance"&&a.url&&/^https?:/.test(a.url)?" <a href='"+ea(a.url)+"' target='_blank' rel='noopener'>source</a>":"";
+      return "Auto: "+WORD[k][av+1]+(k==="stance"&&a.why?" – "+esc(a.why):"")+src;
+    }
+    return D&&D.auto?"No automatic reading yet":"Automatic reading needs the news keys";
+  };
   const cell=(k,c)=>{
     const e=SET[k][c],cur=e&&Number.isFinite(e.v)?String(e.v):"";
-    return "<td><select data-k='"+k+"' data-c='"+c+"' aria-label='"+k+" "+c+"'>"+OPT[k].map(o=>"<option value='"+o[0]+"'"+(o[0]===cur?" selected":"")+">"+o[1]+"</option>").join("")+"</select></td><td class='meta'>"+(e?ago(e.t):"")+"</td>";
+    return "<td><select data-k='"+k+"' data-c='"+c+"' aria-label='"+k+" "+c+"'>"+OPT[k].map(o=>"<option value='"+o[0]+"'"+(o[0]===cur?" selected":"")+">"+o[1]+"</option>").join("")+"</select><small class='meta' style='display:block;margin-top:4px'>"+info(k,c)+"</small></td>";
   };
-  el.innerHTML="<table><thead><tr><th>Currency</th><th>Central bank stance</th><th>Updated</th><th>Data surprises</th><th>Updated</th></tr></thead><tbody>"+CURS.map(c=>"<tr><td><b>"+c+"</b></td>"+cell("stance",c)+cell("surprise",c)+"</tr>").join("")+"</tbody></table>";
+  el.innerHTML="<table><thead><tr><th>Currency</th><th>Central bank stance</th><th>Data surprises</th></tr></thead><tbody>"+CURS.map(c=>"<tr><td><b>"+c+"</b></td>"+cell("stance",c)+cell("surprise",c)+"</tr>").join("")+"</tbody></table>";
   el.querySelectorAll("select").forEach(s=>s.onchange=async()=>{
     const k=s.dataset.k,c=s.dataset.c;
     if(s.value==="")delete SET[k][c];else SET[k][c]={v:+s.value,t:Date.now()};
