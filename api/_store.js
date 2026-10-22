@@ -12,7 +12,7 @@ const URL_ = pick(["UPSTASH_REDIS_REST_URL", "KV_REST_API_URL"], /(REST_API_URL|
 const TOKEN = pick(["UPSTASH_REDIS_REST_TOKEN", "KV_REST_API_TOKEN"], /(REST_API_TOKEN|REDIS_REST_TOKEN)$/, /READ_ONLY/);
 
 // The order of inputs stored in each daily snapshot.
-const INPUTS = ["rates", "infl", "yld", "cot", "news", "risk"];
+const INPUTS = ["rates", "infl", "yld", "cot", "news", "risk", "cb", "growth", "surprise"];
 
 async function redis(cmd) {
   if (!URL_ || !TOKEN) throw new Error("storage not connected");
